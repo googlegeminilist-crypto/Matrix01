@@ -241,19 +241,23 @@
       }
     });
 
-    var spookySnd  = new Audio('Spooky,_creepy,_eeri-1758049336211.mp3');
-    var laughSnd   = new Audio('freesound_community-succubus-laughter-71829 (1).mp3');
-    var whisperSnd = new Audio('a_women_whispering_H-%232-1758097415704.mp3');
+    var spookySnd   = new Audio('Spooky,_creepy,_eeri-1758049336211.mp3');
+    var laughSnd    = new Audio('freesound_community-succubus-laughter-71829 (1).mp3');
+    var whisperSnd  = new Audio('a_women_whispering_H-%232-1758097415704.mp3');
+    var fourVoices  = new Audio('freesound_community-four_voices_whispering_2_wecho-6755.mp3');
 
     function maybePlaySpooky() {
       var r = Math.random();
-      if (r < 0.1) {
+      if (r < 0.05) {
+        fourVoices.currentTime = 0;
+        fourVoices.play();
+      } else if (r < 0.15) {
         whisperSnd.currentTime = 0;
         whisperSnd.play();
-      } else if (r < 0.2) {
+      } else if (r < 0.25) {
         laughSnd.currentTime = 0;
         laughSnd.play();
-      } else if (r < 0.5) {
+      } else if (r < 0.55) {
         spookySnd.currentTime = 0;
         spookySnd.play();
       }
