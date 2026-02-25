@@ -169,6 +169,14 @@
       opacity: 0.4;
     }
 
+    #snake-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+      z-index: 35;
+    }
+
     #trail-canvas {
       position: fixed;
       top: 0;
@@ -195,6 +203,7 @@
 <body>
 
   <canvas id="matrix"></canvas>
+  <canvas id="snake-canvas"></canvas>
   <canvas id="trail-canvas"></canvas>
 
   <div id="overlay">
@@ -334,25 +343,8 @@
         score++;
         scoreEl.textContent = 'SCORE: ' + score;
         maybePlaySpooky();
-
-        var flash = document.createElement('div');
-        flash.className = 'point-flash';
-        flash.textContent = '+1';
-        flash.style.left = e.clientX + 'px';
-        flash.style.top  = (e.clientY - 10) + 'px';
-        flash.style.opacity = '1';
-        document.body.appendChild(flash);
-        var startY = e.clientY - 10;
-        var startTime = null;
-        function animateFlash(ts) {
-          if (!startTime) startTime = ts;
-          var p = Math.min((ts - startTime) / 800, 1);
-          flash.style.opacity = String(1 - p);
-          flash.style.top = (startY - p * 40) + 'px';
-          if (p < 1) { requestAnimationFrame(animateFlash); }
-          else { flash.remove(); }
-        }
-        requestAnimationFrame(animateFlash);
+        showPointFlash(e.clientX, e.clientY, '+1');
+        if (score % 100 === 0) startSnake();
 
         maybeShowHorrorText();
         removeEmoji(el);
@@ -394,6 +386,146 @@
         }
       }
       requestAnimationFrame(fade);
+    }
+
+    function showPointFlash(x, y, text) {
+      var fl = document.createElement('div');
+      fl.className = 'point-flash';
+      fl.textContent = text;
+      fl.style.left = x + 'px';
+      fl.style.top  = (y - 10) + 'px';
+      fl.style.opacity = '1';
+      document.body.appendChild(fl);
+      var sy = y - 10, st = null;
+      function af(ts) {
+        if (!st) st = ts;
+        var p = Math.min((ts - st) / 800, 1);
+        fl.style.opacity = String(1 - p);
+        fl.style.top = (sy - p * 40) + 'px';
+        if (p < 1) { requestAnimationFrame(af); } else { fl.remove(); }
+      }
+      requestAnimationFrame(af);
+    }
+
+    var snakeCanvas = document.getElementById('snake-canvas');
+    var sctx = snakeCanvas.getContext('2d');
+    var snake = null;
+
+    function resizeSnake() {
+      snakeCanvas.width  = window.innerWidth;
+      snakeCanvas.height = window.innerHeight;
+    }
+    resizeSnake();
+    window.addEventListener('resize', resizeSnake);
+
+    function startSnake() {
+      if (snake) return;
+      var spd = 12;
+      var angle = Math.random() * Math.PI * 2;
+      snake = {
+        x:            Math.random() * window.innerWidth,
+        y:            Math.random() * window.innerHeight,
+        vx:           Math.cos(angle) * spd,
+        vy:           Math.sin(angle) * spd,
+        segments:     [],
+        zigTimer:     0,
+        zigInterval:  250 + Math.random() * 250,
+        timeLeft:     20000,
+        lastTs:       null
+      };
+      for (var i = 0; i < 35; i++) {
+        snake.segments.push({ x: snake.x, y: snake.y });
+      }
+      requestAnimationFrame(tickSnake);
+    }
+
+    function tickSnake(ts) {
+      if (!snake) return;
+      sctx.clearRect(0, 0, snakeCanvas.width, snakeCanvas.height);
+
+      if (!snake.lastTs) snake.lastTs = ts;
+      var dt = Math.min(ts - snake.lastTs, 50);
+      snake.lastTs = ts;
+      snake.timeLeft -= dt;
+
+      if (snake.timeLeft <= 0) { snake = null; return; }
+
+      // zig-zag direction changes
+      snake.zigTimer += dt;
+      if (snake.zigTimer >= snake.zigInterval) {
+        snake.zigTimer = 0;
+        snake.zigInterval = 150 + Math.random() * 300;
+        var spd = 12 + Math.random() * 5;
+        var a = Math.atan2(snake.vy, snake.vx) + (Math.random() - 0.5) * 2.4;
+        snake.vx = Math.cos(a) * spd;
+        snake.vy = Math.sin(a) * spd;
+      }
+
+      // bounce walls
+      if (snake.x < 0 || snake.x > snakeCanvas.width)  { snake.vx *= -1; }
+      if (snake.y < 0 || snake.y > snakeCanvas.height)  { snake.vy *= -1; }
+
+      snake.x = Math.max(0, Math.min(snakeCanvas.width,  snake.x + snake.vx));
+      snake.y = Math.max(0, Math.min(snakeCanvas.height, snake.y + snake.vy));
+
+      snake.segments.unshift({ x: snake.x, y: snake.y });
+      if (snake.segments.length > 35) snake.segments.pop();
+
+      // collision with emojis
+      for (var i = activeEmojis.length - 1; i >= 0; i--) {
+        var em = activeEmojis[i];
+        if (!em.parentNode) continue;
+        var r = em.getBoundingClientRect();
+        var ecx = r.left + r.width  / 2;
+        var ecy = r.top  + r.height / 2;
+        var dx  = snake.x - ecx;
+        var dy  = snake.y - ecy;
+        if (Math.sqrt(dx*dx + dy*dy) < 32) {
+          score += 5;
+          scoreEl.textContent = 'SCORE: ' + score;
+          maybePlaySpooky();
+          showPointFlash(ecx, ecy, '+5');
+          removeEmoji(em);
+        }
+      }
+
+      // draw glowing body
+      sctx.shadowBlur  = 18;
+      sctx.shadowColor = '#ff2200';
+      for (var j = snake.segments.length - 1; j >= 0; j--) {
+        var seg = snake.segments[j];
+        var t   = 1 - j / snake.segments.length;
+        var rad = 9 * t + 1;
+        sctx.beginPath();
+        sctx.arc(seg.x, seg.y, rad, 0, Math.PI * 2);
+        sctx.fillStyle = 'rgba(' + Math.floor(180 + 75*t) + ',' + Math.floor(20*t) + ',0,' + (t * 0.95) + ')';
+        sctx.fill();
+      }
+
+      // demon eyes on head
+      var head  = snake.segments[0];
+      var ha    = Math.atan2(snake.vy, snake.vx);
+      var px    = Math.sin(ha) * 4;
+      var py    = -Math.cos(ha) * 4;
+      var fx    = Math.cos(ha) * 7;
+      var fy    = Math.sin(ha) * 7;
+      sctx.shadowBlur  = 8;
+      sctx.shadowColor = '#ff0000';
+      sctx.fillStyle   = '#ffffff';
+      [[px,py],[-px,-py]].forEach(function(o) {
+        sctx.beginPath();
+        sctx.arc(head.x + fx + o[0], head.y + fy + o[1], 2.5, 0, Math.PI * 2);
+        sctx.fill();
+      });
+      sctx.fillStyle = '#ff0000';
+      [[px,py],[-px,-py]].forEach(function(o) {
+        sctx.beginPath();
+        sctx.arc(head.x + fx + o[0], head.y + fy + o[1], 1.2, 0, Math.PI * 2);
+        sctx.fill();
+      });
+
+      sctx.shadowBlur = 0;
+      requestAnimationFrame(tickSnake);
     }
 
     function removeEmoji(el) {
