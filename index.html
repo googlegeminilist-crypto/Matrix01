@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Matrix01</title>
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      background: #000;
+      overflow: hidden;
+    }
+
+    canvas {
+      display: block;
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 0;
+    }
+
+    #overlay {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    #title {
+      font-family: 'Courier New', monospace;
+      font-size: clamp(2rem, 8vw, 6rem);
+      font-weight: 700;
+      letter-spacing: 0.3em;
+      color: #00ff41;
+      text-shadow:
+        0 0 10px #00ff41,
+        0 0 30px #00ff41,
+        0 0 60px #00aa2a;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    #subtitle {
+      margin-top: 1rem;
+      font-family: 'Courier New', monospace;
+      font-size: clamp(0.7rem, 2vw, 1.1rem);
+      letter-spacing: 0.6em;
+      color: #00aa2a;
+      text-shadow: 0 0 8px #00aa2a;
+      text-transform: uppercase;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    .emoji-target {
+      position: fixed;
+      font-size: 1.4rem;
+      opacity: 0.2;
+      cursor: pointer;
+      z-index: 20;
+      pointer-events: all;
+      transition: opacity 0.15s, filter 0.15s;
+      -webkit-user-select: none;
+      user-select: none;
+      filter: drop-shadow(0 0 5px #990000) drop-shadow(0 0 12px #550000) brightness(0.75);
+    }
+
+    .emoji-target:hover {
+      opacity: 0.65;
+      filter: drop-shadow(0 0 8px #ff2200) drop-shadow(0 0 18px #aa0000) brightness(1);
+    }
+
+    #score {
+      position: fixed;
+      top: 1.5rem;
+      right: 1.5rem;
+      font-family: 'Courier New', monospace;
+      font-size: 0.85rem;
+      color: #00aa2a;
+      letter-spacing: 0.1em;
+      z-index: 20;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    .point-flash {
+      position: fixed;
+      font-family: 'Courier New', monospace;
+      font-size: 1rem;
+      color: #00ff41;
+      pointer-events: none;
+      z-index: 30;
+    }
+
+    #music-toggle {
+      position: fixed;
+      bottom: 1.5rem;
+      left: 1.5rem;
+      z-index: 20;
+      background: none;
+      border: 1px solid #005500;
+      color: #00aa2a;
+      font-size: 1.1rem;
+      width: 2.2rem;
+      height: 2.2rem;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0.6;
+      transition: opacity 0.2s, border-color 0.2s;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    #music-toggle:hover {
+      opacity: 1;
+      border-color: #00ff41;
+    }
+
+    #music-toggle.muted {
+      color: #333;
+      border-color: #222;
+      opacity: 0.4;
+    }
+
+    #timestamp {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      font-family: 'Courier New', monospace;
+      font-size: 0.75rem;
+      color: #005500;
+      letter-spacing: 0.1em;
+      -webkit-user-select: none;
+      user-select: none;
+      z-index: 10;
+    }
+
+  </style>
+</head>
+<body>
+
+  <canvas id="matrix"></canvas>
+
+  <div id="overlay">
+    <div id="title">MATRIX01</div>
+    <div id="subtitle">Wake up, Neo...</div>
+  </div>
+
+  <div id="score">SCORE: 0</div>
+  <div id="timestamp"></div>
+  <button type="button" id="music-toggle" title="Toggle music">&#9834;</button>
+
+  <script>
+    var canvas = document.getElementById('matrix');
+    var ctx = canvas.getContext('2d');
+    var FONT_SIZE = 16;
+    var cols, drops;
+
+    function buildChars() {
+      var s = '';
+      for (var i = 0x30A2; i <= 0x30F3; i += 2) {
+        s += String.fromCharCode(i);
+      }
+      s += '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ@#$%&*';
+      return s;
+    }
+
+    var CHARS = buildChars();
+
+    function resize() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      cols = Math.floor(canvas.width / FONT_SIZE);
+      drops = [];
+      for (var i = 0; i < cols; i++) {
+        drops[i] = Math.floor(Math.random() * -100);
+      }
+    }
+
+    function draw() {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.font = FONT_SIZE + 'px "Courier New", monospace';
+
+      for (var i = 0; i < drops.length; i++) {
+        var y = drops[i] * FONT_SIZE;
+        var x = i * FONT_SIZE;
+        var char = CHARS[Math.floor(Math.random() * CHARS.length)];
+
+        ctx.fillStyle = '#eeffee';
+        ctx.fillText(char, x, y);
+
+        if (drops[i] > 1) {
+          ctx.fillStyle = '#00ff41';
+          ctx.fillText(CHARS[Math.floor(Math.random() * CHARS.length)], x, y - FONT_SIZE);
+        }
+
+        if (y > canvas.height && Math.random() > 0.975) {
+          drops[i] = 0;
+        }
+        drops[i]++;
+      }
+    }
+
+    resize();
+    window.addEventListener('resize', resize);
+    setInterval(draw, 40);
+
+    var bgMusic = new Audio('Untitled 4.mp3');
+    bgMusic.loop = true;
+    bgMusic.volume = 0.5;
+
+    var musicOn = false;
+    var musicBtn = document.getElementById('music-toggle');
+
+    musicBtn.addEventListener('click', function() {
+      if (musicOn) {
+        bgMusic.pause();
+        musicOn = false;
+        musicBtn.classList.add('muted');
+        musicBtn.innerHTML = '&#9835;';
+      } else {
+        bgMusic.play();
+        musicOn = true;
+        musicBtn.classList.remove('muted');
+        musicBtn.innerHTML = '&#9834;';
+      }
+    });
+
+    var spookySnd = new Audio('Spooky,_creepy,_eeri-1758049336211.mp3');
+    var laughSnd  = new Audio('freesound_community-succubus-laughter-71829 (1).mp3');
+
+    function maybePlaySpooky() {
+      var r = Math.random();
+      if (r < 0.1) {
+        laughSnd.currentTime = 0;
+        laughSnd.play();
+      } else if (r < 0.4) {
+        spookySnd.currentTime = 0;
+        spookySnd.play();
+      }
+    }
+
+    var EMOJIS = [
+      '\u{1F620}', // grumpy
+      '\u{1F60A}', // happy
+      '\u{1F622}', // sad
+      '\u{1F62D}', // crying
+      '\u{1F632}', // surprised
+      '\u{1F602}', // laughing
+      '\u{1F624}', // upset
+      '\u{1F621}'  // angry
+    ];
+    var score = 0;
+    var scoreEl = document.getElementById('score');
+    var activeEmojis = [];
+
+    function spawnEmoji() {
+      var el = document.createElement('div');
+      el.className = 'emoji-target';
+      el.textContent = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
+      var margin = 60;
+      el.style.left = (margin + Math.random() * (window.innerWidth  - margin * 2)) + 'px';
+      el.style.top  = (margin + Math.random() * (window.innerHeight - margin * 2)) + 'px';
+      document.body.appendChild(el);
+      activeEmojis.push(el);
+
+      el.addEventListener('click', function(e) {
+        score++;
+        scoreEl.textContent = 'SCORE: ' + score;
+        maybePlaySpooky();
+
+        var flash = document.createElement('div');
+        flash.className = 'point-flash';
+        flash.textContent = '+1';
+        flash.style.left = e.clientX + 'px';
+        flash.style.top  = (e.clientY - 10) + 'px';
+        flash.style.opacity = '1';
+        document.body.appendChild(flash);
+        var startY = e.clientY - 10;
+        var startTime = null;
+        function animateFlash(ts) {
+          if (!startTime) startTime = ts;
+          var p = Math.min((ts - startTime) / 800, 1);
+          flash.style.opacity = String(1 - p);
+          flash.style.top = (startY - p * 40) + 'px';
+          if (p < 1) { requestAnimationFrame(animateFlash); }
+          else { flash.remove(); }
+        }
+        requestAnimationFrame(animateFlash);
+
+        removeEmoji(el);
+      });
+
+      var lifetime = 3000 + Math.random() * 4000;
+      setTimeout(function() { removeEmoji(el); }, lifetime);
+    }
+
+    function removeEmoji(el) {
+      if (!el.parentNode) return;
+      el.remove();
+      var idx = activeEmojis.indexOf(el);
+      if (idx > -1) activeEmojis.splice(idx, 1);
+    }
+
+    function spawnBatch() {
+      spawnEmoji();
+      spawnEmoji();
+      spawnEmoji();
+    }
+    setInterval(spawnBatch, 700);
+
+    var ts = document.getElementById('timestamp');
+    function tick() {
+      ts.textContent = new Date().toISOString().replace('T', ' ').slice(0, 19);
+    }
+    tick();
+    setInterval(tick, 1000);
+  </script>
+</body>
+</html>
