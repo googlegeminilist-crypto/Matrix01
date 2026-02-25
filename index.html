@@ -169,6 +169,14 @@
       opacity: 0.4;
     }
 
+    #trail-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+      z-index: 50;
+    }
+
     #timestamp {
       position: fixed;
       bottom: 1.5rem;
@@ -187,6 +195,7 @@
 <body>
 
   <canvas id="matrix"></canvas>
+  <canvas id="trail-canvas"></canvas>
 
   <div id="overlay">
     <div id="title">MATRIX01</div>
@@ -407,6 +416,70 @@
     }
     tick();
     setInterval(tick, 1000);
+
+    var trailCanvas = document.getElementById('trail-canvas');
+    var tctx = trailCanvas.getContext('2d');
+    var bloodDrops = [];
+    var bloodPhase = 0;
+
+    function resizeTrail() {
+      trailCanvas.width  = window.innerWidth;
+      trailCanvas.height = window.innerHeight;
+    }
+    resizeTrail();
+    window.addEventListener('resize', resizeTrail);
+
+    document.addEventListener('mousemove', function(e) {
+      if (Math.random() < 0.6) {
+        bloodDrops.push({
+          x:     e.clientX - (e.clientX % FONT_SIZE),
+          drop:  Math.floor(e.clientY / FONT_SIZE),
+          trail: []
+        });
+        if (bloodDrops.length > 80) bloodDrops.shift();
+      }
+    });
+
+    function animateBlood() {
+      bloodPhase += 0.07;
+      // flash: alternate between showing blood and showing matrix clearly
+      var flash = 0.65 + Math.sin(bloodPhase) * 0.35;
+
+      tctx.clearRect(0, 0, trailCanvas.width, trailCanvas.height);
+      tctx.font = FONT_SIZE + 'px "Courier New", monospace';
+
+      for (var i = bloodDrops.length - 1; i >= 0; i--) {
+        var d = bloodDrops[i];
+
+        // draw + decay trail chars
+        for (var t = d.trail.length - 1; t >= 0; t--) {
+          d.trail[t].life -= 0.035;
+          if (d.trail[t].life <= 0) { d.trail.splice(t, 1); continue; }
+          tctx.globalAlpha = d.trail[t].life * flash;
+          tctx.fillStyle = '#aa0000';
+          tctx.fillText(d.trail[t].char, d.x, d.trail[t].y);
+        }
+
+        // draw lead char
+        var y = d.drop * FONT_SIZE;
+        if (y <= trailCanvas.height + FONT_SIZE) {
+          var char = CHARS[Math.floor(Math.random() * CHARS.length)];
+          tctx.globalAlpha = flash;
+          tctx.fillStyle = '#ff3333';
+          tctx.fillText(char, d.x, y);
+          d.trail.push({ char: char, y: y, life: 0.9 });
+          d.drop++;
+        }
+
+        if (d.trail.length === 0 && y > trailCanvas.height + FONT_SIZE) {
+          bloodDrops.splice(i, 1);
+        }
+      }
+
+      tctx.globalAlpha = 1;
+      requestAnimationFrame(animateBlood);
+    }
+    animateBlood();
   </script>
 </body>
 </html>
