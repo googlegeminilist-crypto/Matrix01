@@ -94,6 +94,39 @@
       user-select: none;
     }
 
+    .horror-text {
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      font-family: Georgia, serif;
+      font-size: clamp(1rem, 2.5vw, 1.6rem);
+      font-weight: 700;
+      color: #cc0000;
+      text-align: center;
+      line-height: 1.9;
+      text-shadow:
+        0 0 8px #ff0000,
+        0 0 20px #880000,
+        0 0 40px #440000;
+      pointer-events: none;
+      z-index: 25;
+      max-width: 60vw;
+      letter-spacing: 0.05em;
+      background: rgba(0, 0, 0, 0.82);
+      padding: 2rem 3rem;
+      border: 1px solid #330000;
+      box-shadow: 0 0 40px rgba(0,0,0,0.9);
+    }
+
+    body.horror-active #overlay,
+    body.horror-active #score,
+    body.horror-active #timestamp,
+    body.horror-active #music-toggle,
+    body.horror-active .point-flash {
+      visibility: hidden;
+    }
+
     .point-flash {
       position: fixed;
       font-family: 'Courier New', monospace;
@@ -180,6 +213,7 @@
     }
 
     var CHARS = buildChars();
+    var horrorActive = false;
 
     function resize() {
       canvas.width = window.innerWidth;
@@ -311,11 +345,46 @@
         }
         requestAnimationFrame(animateFlash);
 
+        maybeShowHorrorText();
         removeEmoji(el);
       });
 
       var lifetime = 3000 + Math.random() * 4000;
       setTimeout(function() { removeEmoji(el); }, lifetime);
+    }
+
+    var HORROR_TEXT = 'The dark one will destroy your soul inside the horror train.\nHe will cut away at your brain\nYour heart will be his supper\nYou will be in pain you will be his dinner';
+
+    function maybeShowHorrorText() {
+      if (Math.random() >= 0.05) return;
+      var el = document.createElement('div');
+      el.className = 'horror-text';
+      el.style.opacity = '1';
+      el.textContent = HORROR_TEXT;
+      el.style.whiteSpace = 'pre-line';
+      document.body.appendChild(el);
+      document.body.classList.add('horror-active');
+      horrorActive = true;
+      var st = null;
+      var hold = 9000;
+      var fadeLen = 1000;
+      function fade(ts) {
+        if (!st) st = ts;
+        var elapsed = ts - st;
+        if (elapsed < hold) {
+          el.style.opacity = '1';
+          requestAnimationFrame(fade);
+        } else {
+          var p = Math.min((elapsed - hold) / fadeLen, 1);
+          el.style.opacity = String(1 - p);
+          if (p < 1) { requestAnimationFrame(fade); } else {
+            el.remove();
+            document.body.classList.remove('horror-active');
+            horrorActive = false;
+          }
+        }
+      }
+      requestAnimationFrame(fade);
     }
 
     function removeEmoji(el) {
