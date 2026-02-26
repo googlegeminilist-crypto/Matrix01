@@ -422,7 +422,13 @@
     var spookySnd   = new Audio('Spooky,_creepy,_eeri-1758049336211.mp3');
     var laughSnd    = new Audio('freesound_community-succubus-laughter-71829 (1).mp3');
     var whisperSnd  = new Audio('a_women_whispering_H-%232-1758097415704.mp3');
+    var shotgunSnd  = new Audio('kakaist-sound-shotgun-sfx-318127.mp3');
     var fourVoices  = new Audio('freesound_community-four_voices_whispering_2_wecho-6755.mp3');
+
+    whisperSnd.addEventListener('ended', function() {
+      shotgunSnd.currentTime = 0;
+      shotgunSnd.play();
+    });
 
     function maybePlaySpooky() {
       var r = Math.random();
