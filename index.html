@@ -185,6 +185,80 @@
       z-index: 50;
     }
 
+    #age-gate {
+      position: fixed;
+      inset: 0;
+      background: #000;
+      z-index: 999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Courier New', monospace;
+    }
+
+    #age-gate h1 {
+      color: #00ff41;
+      font-size: clamp(1.4rem, 4vw, 2.5rem);
+      letter-spacing: 0.2em;
+      text-shadow: 0 0 10px #00ff41, 0 0 30px #00aa2a;
+      margin-bottom: 0.5rem;
+      text-align: center;
+    }
+
+    #age-gate p {
+      color: #005500;
+      font-size: 0.85rem;
+      letter-spacing: 0.1em;
+      margin-bottom: 2rem;
+      text-align: center;
+    }
+
+    #age-gate input {
+      background: #000;
+      border: 1px solid #00aa2a;
+      color: #00ff41;
+      font-family: 'Courier New', monospace;
+      font-size: 1.4rem;
+      width: 5rem;
+      text-align: center;
+      padding: 0.4rem 0.6rem;
+      outline: none;
+      letter-spacing: 0.1em;
+    }
+
+    #age-gate input:focus {
+      border-color: #00ff41;
+      box-shadow: 0 0 8px #00aa2a;
+    }
+
+    #age-gate button {
+      margin-top: 1.2rem;
+      background: none;
+      border: 1px solid #00aa2a;
+      color: #00ff41;
+      font-family: 'Courier New', monospace;
+      font-size: 0.9rem;
+      letter-spacing: 0.2em;
+      padding: 0.5rem 2rem;
+      cursor: pointer;
+    }
+
+    #age-gate button:hover {
+      border-color: #00ff41;
+      box-shadow: 0 0 10px #00aa2a;
+    }
+
+    #age-error {
+      margin-top: 1.2rem;
+      color: #cc0000;
+      font-size: 0.85rem;
+      letter-spacing: 0.1em;
+      text-shadow: 0 0 6px #880000;
+      min-height: 1.2em;
+      text-align: center;
+    }
+
     #timestamp {
       position: fixed;
       bottom: 1.5rem;
@@ -202,6 +276,14 @@
 </head>
 <body>
 
+  <div id="age-gate">
+    <h1>MATRIX01</h1>
+    <p>YOU MUST BE 18 OR OLDER TO ENTER</p>
+    <input type="number" id="age-input" placeholder="AGE" min="1" max="120" />
+    <button type="button" id="age-btn">ENTER</button>
+    <div id="age-error"></div>
+  </div>
+
   <canvas id="matrix"></canvas>
   <canvas id="snake-canvas"></canvas>
   <canvas id="trail-canvas"></canvas>
@@ -216,6 +298,32 @@
   <button type="button" id="music-toggle" title="Toggle music">&#9834;</button>
 
   <script>
+    var ageGate  = document.getElementById('age-gate');
+    var ageInput = document.getElementById('age-input');
+    var ageBtn   = document.getElementById('age-btn');
+    var ageError = document.getElementById('age-error');
+
+    function checkAge() {
+      var val = parseInt(ageInput.value, 10);
+      if (isNaN(val) || val < 1) {
+        ageError.textContent = 'PLEASE ENTER YOUR AGE.';
+        return;
+      }
+      if (val < 18) {
+        ageError.textContent = 'ACCESS DENIED. YOU MUST BE 18 OR OLDER.';
+        ageInput.value = '';
+        ageInput.focus();
+        return;
+      }
+      ageGate.style.display = 'none';
+    }
+
+    ageBtn.addEventListener('click', checkAge);
+    ageInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') checkAge();
+    });
+    ageInput.focus();
+
     var canvas = document.getElementById('matrix');
     var ctx = canvas.getContext('2d');
     var FONT_SIZE = 16;
