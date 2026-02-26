@@ -759,6 +759,34 @@
       requestAnimationFrame(animateBlood);
     }
     animateBlood();
+
+    var bgImg       = document.getElementById('bg-image');
+    var bgVisible   = false;
+    var bgTargetOp  = 0;
+    var bgCurrentOp = 0;
+    bgImg.style.opacity = '0';
+
+    function scheduleBgToggle() {
+      var delay = bgVisible
+        ? 2000 + Math.random() * 5000
+        : 1000 + Math.random() * 4000;
+      setTimeout(function() {
+        bgVisible  = !bgVisible;
+        bgTargetOp = bgVisible ? 0.75 : 0;
+        scheduleBgToggle();
+      }, delay);
+    }
+
+    function animateBg() {
+      if (Math.abs(bgCurrentOp - bgTargetOp) > 0.004) {
+        bgCurrentOp += (bgTargetOp - bgCurrentOp) * 0.05;
+        bgImg.style.opacity = bgCurrentOp.toFixed(3);
+      }
+      requestAnimationFrame(animateBg);
+    }
+
+    scheduleBgToggle();
+    animateBg();
   </script>
 </body>
 </html>
