@@ -418,24 +418,29 @@
     resizeSnake();
     window.addEventListener('resize', resizeSnake);
 
+    function pickSnakeTarget() {
+      var alive = activeEmojis.filter(function(e) { return !!e.parentNode; });
+      if (alive.length === 0) return null;
+      return alive[Math.floor(Math.random() * alive.length)];
+    }
+
     function startSnake() {
       if (snake) return;
-      var spd = 12;
-      var angle = Math.random() * Math.PI * 2;
       snake = {
-        x:            Math.random() * window.innerWidth,
-        y:            Math.random() * window.innerHeight,
-        vx:           Math.cos(angle) * spd,
-        vy:           Math.sin(angle) * spd,
-        segments:     [],
-        zigTimer:     0,
-        zigInterval:  250 + Math.random() * 250,
-        timeLeft:     20000,
-        lastTs:       null
+        x:        Math.random() * window.innerWidth,
+        y:        Math.random() * window.innerHeight,
+        vx:       0,
+        vy:       0,
+        segments: [],
+        wobble:   0,
+        target:   null,
+        timeLeft: 20000,
+        lastTs:   null
       };
       for (var i = 0; i < 35; i++) {
         snake.segments.push({ x: snake.x, y: snake.y });
       }
+      snake.target = pickSnakeTarget();
       requestAnimationFrame(tickSnake);
     }
 
@@ -447,23 +452,28 @@
       var dt = Math.min(ts - snake.lastTs, 50);
       snake.lastTs = ts;
       snake.timeLeft -= dt;
-
       if (snake.timeLeft <= 0) { snake = null; return; }
 
-      // zig-zag direction changes
-      snake.zigTimer += dt;
-      if (snake.zigTimer >= snake.zigInterval) {
-        snake.zigTimer = 0;
-        snake.zigInterval = 150 + Math.random() * 300;
-        var spd = 12 + Math.random() * 5;
-        var a = Math.atan2(snake.vy, snake.vx) + (Math.random() - 0.5) * 2.4;
-        snake.vx = Math.cos(a) * spd;
-        snake.vy = Math.sin(a) * spd;
+      // refresh target if gone
+      if (!snake.target || !snake.target.parentNode) {
+        snake.target = pickSnakeTarget();
       }
 
-      // bounce walls
-      if (snake.x < 0 || snake.x > snakeCanvas.width)  { snake.vx *= -1; }
-      if (snake.y < 0 || snake.y > snakeCanvas.height)  { snake.vy *= -1; }
+      var spd = 14;
+      snake.wobble += dt * 0.008;
+
+      if (snake.target && snake.target.parentNode) {
+        var tx = parseFloat(snake.target.style.left) + 14;
+        var ty = parseFloat(snake.target.style.top)  + 14;
+        var ta = Math.atan2(ty - snake.y, tx - snake.x);
+        // zig-zag wobble layered on top of homing angle
+        var finalAngle = ta + Math.sin(snake.wobble) * 0.9;
+        snake.vx = Math.cos(finalAngle) * spd;
+        snake.vy = Math.sin(finalAngle) * spd;
+      } else {
+        snake.vx = Math.cos(snake.wobble) * spd;
+        snake.vy = Math.sin(snake.wobble) * spd;
+      }
 
       snake.x = Math.max(0, Math.min(snakeCanvas.width,  snake.x + snake.vx));
       snake.y = Math.max(0, Math.min(snakeCanvas.height, snake.y + snake.vy));
@@ -471,18 +481,24 @@
       snake.segments.unshift({ x: snake.x, y: snake.y });
       if (snake.segments.length > 35) snake.segments.pop();
 
-      // collision with emojis
-      for (var i = activeEmojis.length - 1; i >= 0; i--) {
-        var em = activeEmojis[i];
+      // collision — read style.left/top directly, check 6 segments for tunneling
+      var checkSegs = Math.min(6, snake.segments.length);
+      for (var ci = activeEmojis.length - 1; ci >= 0; ci--) {
+        var em  = activeEmojis[ci];
         if (!em.parentNode) continue;
-        var r = em.getBoundingClientRect();
-        var ecx = r.left + r.width  / 2;
-        var ecy = r.top  + r.height / 2;
-        var dx  = snake.x - ecx;
-        var dy  = snake.y - ecy;
-        if (Math.sqrt(dx*dx + dy*dy) < 32) {
+        var ecx = parseFloat(em.style.left)  + 14;
+        var ecy = parseFloat(em.style.top)   + 14;
+        var hit = false;
+        for (var cs = 0; cs < checkSegs; cs++) {
+          var seg = snake.segments[cs];
+          var ddx = seg.x - ecx;
+          var ddy = seg.y - ecy;
+          if (ddx*ddx + ddy*ddy < 60*60) { hit = true; break; }
+        }
+        if (hit) {
           score += 5;
           scoreEl.textContent = 'SCORE: ' + score;
+          if (score % 100 === 0) startSnake();
           maybePlaySpooky();
           showPointFlash(ecx, ecy, '+5');
           removeEmoji(em);
