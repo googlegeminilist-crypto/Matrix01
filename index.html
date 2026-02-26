@@ -462,14 +462,19 @@
       setTimeout(function() { removeEmoji(el); }, lifetime);
     }
 
-    var HORROR_TEXT = 'The dark one will destroy your soul inside the horror train.\nHe will cut away at your brain\nYour heart will be his supper\nYou will be in pain you will be his dinner';
+    var HORROR_TEXTS = [
+      'The dark one will destroy your soul inside the horror train.\nHe will cut away at your brain\nYour heart will be his supper\nYou will be in pain you will be his dinner',
+      'Before the dark one kills you he will feed you nightmares\nYou will dream horrors beyond your imagination feed you brutal fears\nTears of blood will fall down your face for years\nUntil you die you will be trapped in nightmare'
+    ];
 
     function maybeShowHorrorText() {
-      if (Math.random() >= 0.05) return;
+      var r = Math.random();
+      if (r >= 0.1) return;
+      var text = r < 0.05 ? HORROR_TEXTS[0] : HORROR_TEXTS[1];
       var el = document.createElement('div');
       el.className = 'horror-text';
       el.style.opacity = '1';
-      el.textContent = HORROR_TEXT;
+      el.textContent = text;
       el.style.whiteSpace = 'pre-line';
       document.body.appendChild(el);
       document.body.classList.add('horror-active');
