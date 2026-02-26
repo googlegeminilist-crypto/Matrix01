@@ -227,8 +227,20 @@
       color: #005500;
       font-size: 0.85rem;
       letter-spacing: 0.1em;
-      margin-bottom: 2rem;
+      margin-bottom: 1.5rem;
       text-align: center;
+    }
+
+    #age-gate .instructions {
+      color: #00aa2a;
+      font-size: clamp(0.65rem, 1.4vw, 0.85rem);
+      letter-spacing: 0.08em;
+      line-height: 2;
+      text-align: center;
+      text-shadow: 0 0 6px #005500;
+      margin-bottom: 2rem;
+      max-width: 42rem;
+      padding: 0 1.5rem;
     }
 
     #age-gate input {
@@ -296,6 +308,11 @@
   <div id="age-gate">
     <h1>MATRIX01</h1>
     <p>YOU MUST BE 18 OR OLDER TO ENTER</p>
+    <div class="instructions">
+      Click the music icon for dark music<br>
+      Click the emojis for spooky sounds<br>
+      Read the story and be drawn into it with the effects
+    </div>
     <input type="number" id="age-input" placeholder="AGE" min="1" max="120" />
     <button type="button" id="age-btn">ENTER</button>
     <div id="age-error"></div>
