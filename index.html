@@ -16,6 +16,17 @@
       height: 100%;
       background: #000;
       overflow: hidden;
+      cursor: none;
+    }
+
+    button, input, a { cursor: none; }
+
+    #cursor-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+      z-index: 100;
     }
 
     #bg-image {
@@ -345,6 +356,7 @@
   <canvas id="snake-canvas"></canvas>
   <canvas id="ghost-canvas"></canvas>
   <canvas id="trail-canvas"></canvas>
+  <canvas id="cursor-canvas"></canvas>
 
   <div id="overlay">
     <div id="title">MATRIX01</div>
@@ -971,6 +983,76 @@
 
     scheduleBgToggle();
     animateBg();
+
+    // ---- DEMON PUMPKIN CURSOR -------------------------------------------
+    var cursorCanvas = document.getElementById('cursor-canvas');
+    var cctx = cursorCanvas.getContext('2d');
+    cursorCanvas.width  = window.innerWidth;
+    cursorCanvas.height = window.innerHeight;
+    window.addEventListener('resize', function() {
+      cursorCanvas.width  = window.innerWidth;
+      cursorCanvas.height = window.innerHeight;
+    });
+
+    var mouseX = -200, mouseY = -200;
+    document.addEventListener('mousemove', function(e) {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+    });
+
+    // 0=empty 1=stem 2=body 3=carving 4=eye-glow 5=tooth
+    var PUMPKIN = [
+      [0,0,0,0,1,1,0,0,0,0],
+      [0,0,0,1,1,1,0,0,0,0],
+      [0,0,2,2,2,2,2,2,0,0],
+      [0,2,2,2,2,2,2,2,2,0],
+      [2,2,2,2,2,2,2,2,2,2],
+      [2,2,3,3,2,2,3,3,2,2],
+      [2,2,4,3,2,2,3,4,2,2],
+      [2,2,3,3,2,2,3,3,2,2],
+      [2,2,2,2,2,2,2,2,2,2],
+      [2,3,2,5,3,3,5,2,3,2],
+      [2,2,3,2,5,5,2,3,2,2],
+      [0,2,2,2,2,2,2,2,2,0],
+      [0,0,2,2,2,2,2,2,0,0]
+    ];
+    var P_PX = 5;
+
+    var pumpkinBob = 0;
+
+    function drawPumpkinCursor(x, y) {
+      pumpkinBob += 0.08;
+      var by = Math.sin(pumpkinBob) * 3;
+      var pw = PUMPKIN[0].length * P_PX;
+      var ph = PUMPKIN.length    * P_PX;
+
+      cctx.shadowBlur  = 20;
+      cctx.shadowColor = 'rgba(255,100,0,0.9)';
+
+      for (var row = 0; row < PUMPKIN.length; row++) {
+        for (var col = 0; col < PUMPKIN[row].length; col++) {
+          var v = PUMPKIN[row][col];
+          if (!v) continue;
+          var px = x - pw / 2 + col * P_PX;
+          var py = y - ph / 2 + row * P_PX + by;
+          if (v === 1) cctx.fillStyle = '#1a6600';          // stem
+          if (v === 2) cctx.fillStyle = '#cc5500';          // pumpkin body
+          if (v === 3) cctx.fillStyle = '#0a0000';          // black carving
+          if (v === 4) cctx.fillStyle = 'rgba(255,80,0,0.9)'; // eye glow
+          if (v === 5) cctx.fillStyle = '#ffddaa';          // tooth
+          cctx.fillRect(px, py, P_PX, P_PX);
+        }
+      }
+      cctx.shadowBlur = 0;
+    }
+
+    function animateCursor() {
+      cctx.clearRect(0, 0, cursorCanvas.width, cursorCanvas.height);
+      drawPumpkinCursor(mouseX, mouseY);
+      requestAnimationFrame(animateCursor);
+    }
+    animateCursor();
+    // -----------------------------------------------------------------------
   </script>
 </body>
 </html>
