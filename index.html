@@ -759,8 +759,21 @@
     resizeGhost();
     window.addEventListener('resize', resizeGhost);
 
-    // Retro pixel ghost map: 0=empty 1=body 2=eye-white 3=pupil
-    var GHOST_MAP = [
+    // evil: 0=empty 1=body 2=brow 3=eye 4=fang
+    var GHOST_EVIL = [
+      [0,0,1,1,1,1,1,1,0,0],
+      [0,1,1,1,1,1,1,1,1,0],
+      [1,1,1,1,1,1,1,1,1,1],
+      [1,2,2,1,1,1,1,2,2,1],
+      [1,1,3,3,1,1,3,3,1,1],
+      [1,1,3,3,1,1,3,3,1,1],
+      [1,1,1,1,1,1,1,1,1,1],
+      [1,4,1,4,1,4,1,4,1,1],
+      [1,0,1,0,1,0,1,0,0,1],
+      [0,0,1,0,0,0,1,0,0,0]
+    ];
+    // friendly: 0=empty 1=body 2=eye-white 3=pupil
+    var GHOST_NICE = [
       [0,0,0,1,1,1,1,0,0,0],
       [0,0,1,1,1,1,1,1,0,0],
       [0,1,1,1,1,1,1,1,1,0],
@@ -772,18 +785,20 @@
       [1,1,1,1,1,1,1,1,1,1],
       [1,0,1,0,0,1,1,0,0,1]
     ];
-    var G_PX = 5;
-    var G_W  = GHOST_MAP[0].length * G_PX;
-    var G_H  = GHOST_MAP.length    * G_PX;
+    var G_PX   = 6;
+    var G_W    = GHOST_EVIL[0].length * G_PX;
+    var G_H    = GHOST_EVIL.length    * G_PX;
+    var ghostFlipT  = 0;
+    var GHOST_MAP   = GHOST_EVIL;
 
     var ghost = {
-      x:         Math.random() * window.innerWidth,
-      y:         Math.random() * window.innerHeight,
-      target:    null,
-      alpha:     0,
-      floatT:    0,
-      phaseT:    0,
-      phaseSpd:  0.018 + Math.random() * 0.01
+      x:        Math.random() * window.innerWidth,
+      y:        Math.random() * window.innerHeight,
+      target:   null,
+      alpha:    0,
+      floatT:   0,
+      phaseT:   0,
+      flickerT: 0
     };
 
     function pickGhostTarget() {
@@ -792,17 +807,25 @@
     }
 
     function drawGhost(x, y, a) {
-      gctx.shadowBlur  = 18;
-      gctx.shadowColor = 'rgba(120,255,190,' + a + ')';
+      var evil = (GHOST_MAP === GHOST_EVIL);
+      gctx.shadowBlur  = 24;
+      gctx.shadowColor = evil ? 'rgba(180,0,255,' + a + ')' : 'rgba(120,255,190,' + a + ')';
       for (var row = 0; row < GHOST_MAP.length; row++) {
         for (var col = 0; col < GHOST_MAP[row].length; col++) {
           var v = GHOST_MAP[row][col];
           if (!v) continue;
           var px = x - G_W / 2 + col * G_PX;
           var py = y - G_H / 2 + row * G_PX;
-          if (v === 1) gctx.fillStyle = 'rgba(160,255,210,' + a + ')';
-          if (v === 2) gctx.fillStyle = 'rgba(255,255,255,' + a + ')';
-          if (v === 3) gctx.fillStyle = 'rgba(0,80,40,'     + a + ')';
+          if (evil) {
+            if (v === 1) gctx.fillStyle = 'rgba(110,0,160,'   + a + ')';
+            if (v === 2) gctx.fillStyle = 'rgba(40,0,60,'     + a + ')';
+            if (v === 3) gctx.fillStyle = 'rgba(255,30,0,'    + a + ')';
+            if (v === 4) gctx.fillStyle = 'rgba(240,210,255,' + a + ')';
+          } else {
+            if (v === 1) gctx.fillStyle = 'rgba(160,255,210,' + a + ')';
+            if (v === 2) gctx.fillStyle = 'rgba(255,255,255,' + a + ')';
+            if (v === 3) gctx.fillStyle = 'rgba(0,80,40,'     + a + ')';
+          }
           gctx.fillRect(px, py, G_PX, G_PX);
         }
       }
@@ -812,26 +835,31 @@
     function tickGhost() {
       gctx.clearRect(0, 0, ghostCanvas.width, ghostCanvas.height);
 
-      ghost.floatT += 0.04;
-      ghost.phaseT += ghost.phaseSpd;
-      // alpha pulses 0 → 0.85 → 0 creating wave-in/wave-out effect
-      ghost.alpha = Math.max(0, Math.sin(ghost.phaseT) * 0.85);
+      ghost.floatT  += 0.045;
+      ghost.phaseT  += 0.022;
+      ghost.flickerT += 0.3;
+      ghostFlipT    += 0.18;
+      GHOST_MAP = (Math.sin(ghostFlipT) > 0) ? GHOST_EVIL : GHOST_NICE;
+
+      var base    = Math.pow(Math.max(0, Math.sin(ghost.phaseT)), 0.4) * 0.9;
+      var flicker = 1 - (Math.max(0, Math.sin(ghost.flickerT)) * 0.18 * (1 - base));
+      ghost.alpha = base * flicker;
 
       if (!ghost.target || !ghost.target.parentNode) {
         ghost.target = pickGhostTarget();
       }
 
       if (ghost.target && ghost.target.parentNode && ghost.alpha > 0.05) {
-        var tx  = parseFloat(ghost.target.style.left) + 14;
-        var ty  = parseFloat(ghost.target.style.top)  + 14;
-        var dx  = tx - ghost.x;
-        var dy  = ty - ghost.y;
+        var tx   = parseFloat(ghost.target.style.left) + 14;
+        var ty   = parseFloat(ghost.target.style.top)  + 14;
+        var dx   = tx - ghost.x;
+        var dy   = ty - ghost.y;
         var dist = Math.sqrt(dx * dx + dy * dy);
 
         if (dist > 4) {
-          var spd = 2.5;
-          ghost.x += (dx / dist) * spd + Math.sin(ghost.floatT * 0.9) * 2;
-          ghost.y += (dy / dist) * spd + Math.cos(ghost.floatT * 0.6) * 1.2;
+          var spd = 3.5;
+          ghost.x += (dx / dist) * spd + Math.sin(ghost.floatT * 1.1) * 2.5;
+          ghost.y += (dy / dist) * spd + Math.cos(ghost.floatT * 0.7) * 1.5;
         }
 
         if (dist < 45) {
