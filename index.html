@@ -111,6 +111,20 @@
       user-select: none;
     }
 
+    #ai-score {
+      position: fixed;
+      top: 1.5rem;
+      left: 1.5rem;
+      font-family: 'Courier New', monospace;
+      font-size: 0.85rem;
+      color: #aaffdd;
+      letter-spacing: 0.1em;
+      text-shadow: 0 0 6px #55ffaa;
+      z-index: 20;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
     .horror-text {
       position: fixed;
       left: 50%;
@@ -192,6 +206,14 @@
       left: 0;
       pointer-events: none;
       z-index: 35;
+    }
+
+    #ghost-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+      z-index: 30;
     }
 
     #trail-canvas {
@@ -321,6 +343,7 @@
   <img id="bg-image" src="cool dool.png" alt="" />
   <canvas id="matrix"></canvas>
   <canvas id="snake-canvas"></canvas>
+  <canvas id="ghost-canvas"></canvas>
   <canvas id="trail-canvas"></canvas>
 
   <div id="overlay">
@@ -329,6 +352,7 @@
   </div>
 
   <div id="score">SCORE: 0</div>
+  <div id="ai-score">GHOST: 0</div>
   <div id="timestamp"></div>
   <button type="button" id="music-toggle" title="Toggle music">&#9834;</button>
 
@@ -721,6 +745,112 @@
     }
     tick();
     setInterval(tick, 1000);
+
+    // ---- RETRO GHOST --------------------------------------------------------
+    var ghostCanvas = document.getElementById('ghost-canvas');
+    var gctx = ghostCanvas.getContext('2d');
+    var aiScore   = 0;
+    var aiScoreEl = document.getElementById('ai-score');
+
+    function resizeGhost() {
+      ghostCanvas.width  = window.innerWidth;
+      ghostCanvas.height = window.innerHeight;
+    }
+    resizeGhost();
+    window.addEventListener('resize', resizeGhost);
+
+    // Retro pixel ghost map: 0=empty 1=body 2=eye-white 3=pupil
+    var GHOST_MAP = [
+      [0,0,0,1,1,1,1,0,0,0],
+      [0,0,1,1,1,1,1,1,0,0],
+      [0,1,1,1,1,1,1,1,1,0],
+      [1,1,1,2,2,2,2,1,1,1],
+      [1,1,1,2,3,2,3,1,1,1],
+      [1,1,1,2,2,2,2,1,1,1],
+      [1,1,1,1,1,1,1,1,1,1],
+      [1,1,1,1,1,1,1,1,1,1],
+      [1,1,1,1,1,1,1,1,1,1],
+      [1,0,1,0,0,1,1,0,0,1]
+    ];
+    var G_PX = 5;
+    var G_W  = GHOST_MAP[0].length * G_PX;
+    var G_H  = GHOST_MAP.length    * G_PX;
+
+    var ghost = {
+      x:         Math.random() * window.innerWidth,
+      y:         Math.random() * window.innerHeight,
+      target:    null,
+      alpha:     0,
+      floatT:    0,
+      phaseT:    0,
+      phaseSpd:  0.018 + Math.random() * 0.01
+    };
+
+    function pickGhostTarget() {
+      var alive = activeEmojis.filter(function(e) { return !!e.parentNode; });
+      return alive.length ? alive[Math.floor(Math.random() * alive.length)] : null;
+    }
+
+    function drawGhost(x, y, a) {
+      gctx.shadowBlur  = 18;
+      gctx.shadowColor = 'rgba(120,255,190,' + a + ')';
+      for (var row = 0; row < GHOST_MAP.length; row++) {
+        for (var col = 0; col < GHOST_MAP[row].length; col++) {
+          var v = GHOST_MAP[row][col];
+          if (!v) continue;
+          var px = x - G_W / 2 + col * G_PX;
+          var py = y - G_H / 2 + row * G_PX;
+          if (v === 1) gctx.fillStyle = 'rgba(160,255,210,' + a + ')';
+          if (v === 2) gctx.fillStyle = 'rgba(255,255,255,' + a + ')';
+          if (v === 3) gctx.fillStyle = 'rgba(0,80,40,'     + a + ')';
+          gctx.fillRect(px, py, G_PX, G_PX);
+        }
+      }
+      gctx.shadowBlur = 0;
+    }
+
+    function tickGhost() {
+      gctx.clearRect(0, 0, ghostCanvas.width, ghostCanvas.height);
+
+      ghost.floatT += 0.04;
+      ghost.phaseT += ghost.phaseSpd;
+      // alpha pulses 0 → 0.85 → 0 creating wave-in/wave-out effect
+      ghost.alpha = Math.max(0, Math.sin(ghost.phaseT) * 0.85);
+
+      if (!ghost.target || !ghost.target.parentNode) {
+        ghost.target = pickGhostTarget();
+      }
+
+      if (ghost.target && ghost.target.parentNode && ghost.alpha > 0.05) {
+        var tx  = parseFloat(ghost.target.style.left) + 14;
+        var ty  = parseFloat(ghost.target.style.top)  + 14;
+        var dx  = tx - ghost.x;
+        var dy  = ty - ghost.y;
+        var dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist > 4) {
+          var spd = 2.5;
+          ghost.x += (dx / dist) * spd + Math.sin(ghost.floatT * 0.9) * 2;
+          ghost.y += (dy / dist) * spd + Math.cos(ghost.floatT * 0.6) * 1.2;
+        }
+
+        if (dist < 45) {
+          aiScore++;
+          aiScoreEl.textContent = 'GHOST: ' + aiScore;
+          showPointFlash(ghost.x, ghost.y - 20, 'BOO!');
+          removeEmoji(ghost.target);
+          ghost.target = null;
+        }
+      }
+
+      if (ghost.alpha > 0.02) {
+        drawGhost(ghost.x, ghost.y, ghost.alpha.toFixed(3));
+      }
+
+      requestAnimationFrame(tickGhost);
+    }
+    tickGhost();
+    // -------------------------------------------------------------------------
 
     var trailCanvas = document.getElementById('trail-canvas');
     var tctx = trailCanvas.getContext('2d');
