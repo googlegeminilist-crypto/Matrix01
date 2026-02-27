@@ -591,10 +591,30 @@
       ].join(';');
       btn.addEventListener('click', function() {
         overlay.remove();
+
+        // reset scores
         score = 0; aiScore = 0;
         scoreEl.textContent = 'SCORE: 0';
         aiScoreEl.textContent = 'GHOST: 0';
+
+        // clear any leftover emojis and bombs so nothing stale lingers
+        for (var i = activeEmojis.length - 1; i >= 0; i--) {
+          if (activeEmojis[i].parentNode) activeEmojis[i].remove();
+        }
+        activeEmojis = [];
+        clearBombs();
+
+        // kill any active snake so it doesn't carry over
+        snake = null;
+        sctx.clearRect(0, 0, snakeCanvas.width, snakeCanvas.height);
+
+        // reset ghost target and clear its canvas
+        ghost.target = null;
+        gctx.clearRect(0, 0, ghostCanvas.width, ghostCanvas.height);
+
+        // re-open the race and restart the ghost loop (it exited when raceOver was true)
         raceOver = false;
+        tickGhost();
       });
 
       overlay.appendChild(title);
