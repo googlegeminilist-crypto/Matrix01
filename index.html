@@ -54,6 +54,114 @@
       mix-blend-mode: screen;
     }
 
+    /* === DEPTH OF FIELD — active only when cool dool.png is visible === */
+
+    /* Breathing animation — opacity only = pure GPU Composite, zero Paint */
+    @keyframes dofBreathe {
+      0%   { opacity: 0.68; }
+      50%  { opacity: 0.96; }
+      100% { opacity: 0.68; }
+    }
+
+    /* Matrix zooms toward viewer when DOF is active */
+    body.dof-active #matrix {
+      transform: scale(1.09);
+      transform-origin: center center;
+      transition: transform 1.1s ease;
+    }
+
+    /* DOF layer 1 — soft blur, wide ring from 38% outward */
+    #matrix-dof {
+      mix-blend-mode: screen;
+      pointer-events: none;
+      display: none;
+      -webkit-mask-image: radial-gradient(ellipse 72% 65% at 50% 50%,
+        transparent 38%, rgba(0,0,0,0.4) 54%, rgba(0,0,0,0.9) 72%, black 88%);
+      mask-image: radial-gradient(ellipse 72% 65% at 50% 50%,
+        transparent 38%, rgba(0,0,0,0.4) 54%, rgba(0,0,0,0.9) 72%, black 88%);
+      animation: dofBreathe 4s ease-in-out infinite;
+    }
+    body.dof-active #matrix-dof { display: block; }
+
+    /* DOF layer 2 — medium-heavy blur, tighter mask from 24% outward */
+    #matrix-dof2 {
+      mix-blend-mode: screen;
+      pointer-events: none;
+      display: none;
+      -webkit-mask-image: radial-gradient(ellipse 52% 46% at 50% 50%,
+        transparent 24%, rgba(0,0,0,0.35) 42%, rgba(0,0,0,0.85) 60%, black 76%);
+      mask-image: radial-gradient(ellipse 52% 46% at 50% 50%,
+        transparent 24%, rgba(0,0,0,0.35) 42%, rgba(0,0,0,0.85) 60%, black 76%);
+      animation: dofBreathe 4s ease-in-out infinite;
+      animation-delay: -1s;
+    }
+    body.dof-active #matrix-dof2 { display: block; }
+
+    /* DOF layer 3 — very heavy blur, extreme edges only from 12% outward */
+    #matrix-dof3 {
+      mix-blend-mode: screen;
+      pointer-events: none;
+      display: none;
+      -webkit-mask-image: radial-gradient(ellipse 34% 30% at 50% 50%,
+        transparent 12%, rgba(0,0,0,0.25) 28%, rgba(0,0,0,0.8) 46%, black 64%);
+      mask-image: radial-gradient(ellipse 34% 30% at 50% 50%,
+        transparent 12%, rgba(0,0,0,0.25) 28%, rgba(0,0,0,0.8) 46%, black 64%);
+      animation: dofBreathe 4s ease-in-out infinite;
+      animation-delay: -2s;
+    }
+    body.dof-active #matrix-dof3 { display: block; }
+
+    /* DOF layer 4 — extreme blur, chromatic-tinted, corners only */
+    #matrix-dof4 {
+      mix-blend-mode: screen;
+      pointer-events: none;
+      display: none;
+      filter: hue-rotate(85deg) saturate(1.6);
+      -webkit-mask-image: radial-gradient(ellipse 22% 18% at 50% 50%,
+        transparent 0%, rgba(0,0,0,0.15) 18%, rgba(0,0,0,0.7) 36%, black 55%);
+      mask-image: radial-gradient(ellipse 22% 18% at 50% 50%,
+        transparent 0%, rgba(0,0,0,0.15) 18%, rgba(0,0,0,0.7) 36%, black 55%);
+    }
+    body.dof-active #matrix-dof4 { display: block; }
+
+    /* Dark vignette — frames the "portal" to step through */
+    #dof-vignette {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 4;
+      display: none;
+      background: radial-gradient(ellipse 58% 52% at 50% 50%,
+        transparent 30%,
+        rgba(0,0,0,0.35) 52%,
+        rgba(0,0,0,0.72) 72%,
+        rgba(0,0,0,0.92) 88%,
+        black 100%);
+      animation: dofBreathe 5s ease-in-out infinite;
+    }
+    body.dof-active #dof-vignette { display: block; }
+
+    /* Image — blurred edge copy (portal depth) */
+    #bg-image-dof {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+      z-index: 1;
+      opacity: 0;
+      pointer-events: none;
+      mix-blend-mode: luminosity;
+      filter: blur(14px) brightness(1.08) saturate(1.2);
+      transition: opacity 0.6s ease;
+      transform: scale(1.06);
+      -webkit-mask-image: radial-gradient(ellipse 46% 40% at 50% 50%,
+        transparent 18%, rgba(0,0,0,0.45) 38%, rgba(0,0,0,0.9) 60%, black 78%);
+      mask-image: radial-gradient(ellipse 46% 40% at 50% 50%,
+        transparent 18%, rgba(0,0,0,0.45) 38%, rgba(0,0,0,0.9) 60%, black 78%);
+    }
+
     #overlay {
       position: fixed;
       inset: 0;
@@ -449,7 +557,13 @@
   </div>
 
   <img id="bg-image" src="cool dool.png" alt="" />
+  <img id="bg-image-dof" src="cool dool.png" alt="" />
   <canvas id="matrix"></canvas>
+  <canvas id="matrix-dof"></canvas>
+  <canvas id="matrix-dof2"></canvas>
+  <canvas id="matrix-dof3"></canvas>
+  <canvas id="matrix-dof4"></canvas>
+  <div id="dof-vignette"></div>
   <canvas id="snake-canvas"></canvas>
   <canvas id="ghost-canvas"></canvas>
   <canvas id="trail-canvas"></canvas>
@@ -548,6 +662,47 @@
     resize();
     window.addEventListener('resize', resize);
     setInterval(draw, 40);
+
+    // --- MATRIX + IMAGE DEPTH OF FIELD ---
+    // Two blurred canvas copies of the matrix at different blur levels,
+    // each masked to different radii — creates a smooth DOF gradient
+    // from sharp centre to heavily blurred extreme edges.
+    // 4-layer DOF: each layer is a blurred copy of the matrix canvas,
+    // masked to a progressively tighter ring so the blur increases
+    // smoothly from centre (sharp) to extreme edges (maximum blur).
+    // Layer 4 also has a hue-rotate filter for chromatic-aberration fringing.
+    var dofCanvases = [
+      document.getElementById('matrix-dof'),
+      document.getElementById('matrix-dof2'),
+      document.getElementById('matrix-dof3'),
+      document.getElementById('matrix-dof4')
+    ];
+    var dofCtxs = dofCanvases.map(function(c) { return c.getContext('2d'); });
+    var dofBlurs = [4, 11, 22, 36];  // px blur per layer
+    var bgDofImg  = document.getElementById('bg-image-dof');
+    var matrixDOF = false;
+
+    function resizeDOF() {
+      dofCanvases.forEach(function(c) {
+        c.width  = window.innerWidth;
+        c.height = window.innerHeight;
+      });
+    }
+    resizeDOF();
+    window.addEventListener('resize', resizeDOF);
+
+    function animateDOF() {
+      if (!matrixDOF) return;
+      for (var li = 0; li < dofCtxs.length; li++) {
+        var dc = dofCanvases[li], dx = dofCtxs[li];
+        dx.clearRect(0, 0, dc.width, dc.height);
+        dx.filter = 'blur(' + dofBlurs[li] + 'px)';
+        dx.drawImage(canvas, 0, 0);
+        dx.filter = 'none';
+      }
+      requestAnimationFrame(animateDOF);
+    }
+    // --- END MATRIX + IMAGE DOF ---
 
     var bgMusic = new Audio('Untitled 4.mp3');
     bgMusic.loop = true;
@@ -1338,10 +1493,17 @@
           spawnBombs();
           document.getElementById('bloody-overlay').classList.add('active');
           startBloodGore();
+          matrixDOF = false;
+          document.body.classList.remove('dof-active');
+          bgDofImg.style.opacity = '0';
         } else {
           clearBombs();
           stopBloodGore();
           document.getElementById('bloody-overlay').classList.remove('active');
+          matrixDOF = true;
+          document.body.classList.add('dof-active');
+          bgDofImg.style.opacity = '0.75';
+          animateDOF();
         }
         scheduleBgToggle();
       }, delay);
