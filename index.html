@@ -321,6 +321,10 @@
       text-align: center;
     }
 
+    @keyframes racePulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.55; }
+    }
     @keyframes bombPulse {
       0%   { filter: drop-shadow(0 0 8px #ff2200) drop-shadow(0 0 20px #ff5500) brightness(1); }
       50%  { filter: drop-shadow(0 0 22px #ff0000) drop-shadow(0 0 50px #ffbb00) brightness(1.6); }
@@ -539,6 +543,65 @@
     var scoreEl = document.getElementById('score');
     var activeEmojis = [];
     var battleMode = false;
+    var raceOver = false;
+
+    function checkRace() {
+      if (raceOver) return;
+      if (score >= 1000) { raceOver = true; showRaceResult(true); }
+      else if (aiScore >= 1000) { raceOver = true; showRaceResult(false); }
+    }
+
+    function showRaceResult(playerWon) {
+      clearBombs();
+      var overlay = document.createElement('div');
+      overlay.id = 'race-result';
+      overlay.style.cssText = [
+        'position:fixed','inset:0','z-index:900',
+        'display:flex','flex-direction:column',
+        'align-items:center','justify-content:center',
+        'background:rgba(0,0,0,0.88)',
+        'font-family:"Courier New",monospace',
+        'cursor:default'
+      ].join(';');
+
+      var title = document.createElement('div');
+      if (playerWon) {
+        title.textContent = 'YOU WIN';
+        title.style.cssText = 'font-size:clamp(3rem,10vw,7rem);font-weight:700;color:#00ff41;letter-spacing:0.3em;text-shadow:0 0 20px #00ff41,0 0 60px #00aa2a;animation:racePulse 1s ease-in-out infinite';
+      } else {
+        title.textContent = 'GHOST WINS';
+        title.style.cssText = 'font-size:clamp(3rem,10vw,7rem);font-weight:700;color:#cc00ff;letter-spacing:0.2em;text-shadow:0 0 20px #cc00ff,0 0 60px #880088;animation:racePulse 0.6s ease-in-out infinite';
+      }
+
+      var sub = document.createElement('div');
+      sub.textContent = playerWon
+        ? 'You reached 1000 first. The ghost retreats.'
+        : 'The ghost devoured 1000 souls before you. You lose.';
+      sub.style.cssText = 'margin-top:1.5rem;font-size:clamp(0.9rem,2.5vw,1.4rem);color:#aaa;letter-spacing:0.1em;text-align:center;padding:0 2rem';
+
+      var btn = document.createElement('button');
+      btn.textContent = 'PLAY AGAIN';
+      btn.style.cssText = [
+        'margin-top:2.5rem','padding:0.8rem 2.5rem',
+        'font-family:"Courier New",monospace','font-size:1.1rem',
+        'background:transparent','cursor:pointer','letter-spacing:0.2em',
+        playerWon
+          ? 'color:#00ff41;border:2px solid #00ff41;box-shadow:0 0 12px #00ff41'
+          : 'color:#cc00ff;border:2px solid #cc00ff;box-shadow:0 0 12px #cc00ff'
+      ].join(';');
+      btn.addEventListener('click', function() {
+        overlay.remove();
+        score = 0; aiScore = 0;
+        scoreEl.textContent = 'SCORE: 0';
+        aiScoreEl.textContent = 'GHOST: 0';
+        raceOver = false;
+      });
+
+      overlay.appendChild(title);
+      overlay.appendChild(sub);
+      overlay.appendChild(btn);
+      document.body.appendChild(overlay);
+    }
 
     function spawnEmoji() {
       var el = document.createElement('div');
@@ -551,12 +614,13 @@
       activeEmojis.push(el);
 
       el.addEventListener('click', function(e) {
+        if (raceOver) return;
         score++;
         scoreEl.textContent = 'SCORE: ' + score;
         maybePlaySpooky();
         showPointFlash(e.clientX, e.clientY, '+1');
         if (score % 100 === 0) startSnake();
-
+        checkRace();
         maybeShowHorrorText();
         removeEmoji(el);
       });
@@ -718,6 +782,7 @@
           score += 5;
           scoreEl.textContent = 'SCORE: ' + score;
           if (score % 100 === 0) startSnake();
+          checkRace();
           maybePlaySpooky();
           showPointFlash(ecx, ecy, '+5');
           removeEmoji(em);
@@ -871,6 +936,7 @@
     }
 
     function tickGhost() {
+      if (raceOver) return;
       gctx.clearRect(0, 0, ghostCanvas.width, ghostCanvas.height);
 
       ghost.floatT  += 0.045;
@@ -904,6 +970,7 @@
           aiScore++;
           aiScoreEl.textContent = 'GHOST: ' + aiScore;
           showPointFlash(ghost.x, ghost.y - 20, 'BOO!');
+          checkRace();
           removeEmoji(ghost.target);
           ghost.target = null;
         }
