@@ -321,6 +321,31 @@
       text-align: center;
     }
 
+    @keyframes bombPulse {
+      0%   { filter: drop-shadow(0 0 8px #ff2200) drop-shadow(0 0 20px #ff5500) brightness(1); }
+      50%  { filter: drop-shadow(0 0 22px #ff0000) drop-shadow(0 0 50px #ffbb00) brightness(1.6); }
+      100% { filter: drop-shadow(0 0 8px #ff2200) drop-shadow(0 0 20px #ff5500) brightness(1); }
+    }
+    .bomb-target {
+      position: fixed;
+      font-size: 3.6rem;
+      z-index: 200;
+      pointer-events: all;
+      cursor: pointer;
+      -webkit-user-select: none;
+      user-select: none;
+      width: 82px;
+      height: 82px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #1a0000;
+      border-radius: 50%;
+      border: 4px solid #ff4400;
+      box-shadow: 0 0 14px 4px #ff2200, 0 0 40px 8px #ff5500;
+      animation: bombPulse 0.7s ease-in-out infinite;
+    }
+
     #timestamp {
       position: fixed;
       bottom: 1.5rem;
@@ -513,6 +538,7 @@
     var score = 0;
     var scoreEl = document.getElementById('score');
     var activeEmojis = [];
+    var battleMode = false;
 
     function spawnEmoji() {
       var el = document.createElement('div');
@@ -969,6 +995,11 @@
       setTimeout(function() {
         bgVisible  = !bgVisible;
         bgTargetOp = bgVisible ? 0.75 : 0;
+        if (!bgVisible) {
+          spawnBombs();
+        } else {
+          clearBombs();
+        }
         scheduleBgToggle();
       }, delay);
     }
@@ -983,6 +1014,64 @@
 
     scheduleBgToggle();
     animateBg();
+
+    // ---- FALLING BOMBS (appear when image disappears) --------------------
+    var activeBombs = [];
+
+    function spawnBombs() {
+      var count = 3 + Math.floor(Math.random() * 4);
+      for (var bi = 0; bi < count; bi++) {
+        (function(delay) {
+          setTimeout(spawnOneBomb, delay);
+        }(Math.random() * 2000));
+      }
+    }
+
+    function spawnOneBomb() {
+      if (battleMode) return;
+      var el = document.createElement('div');
+      el.className = 'bomb-target';
+      el.textContent = '\uD83D\uDCA3';
+      var bx = 60 + Math.random() * (window.innerWidth - 120);
+      el.style.left = bx + 'px';
+      el.style.top  = '-60px';
+      document.body.appendChild(el);
+      activeBombs.push(el);
+
+      var speed  = 1.8 + Math.random() * 2.2;
+      el.addEventListener('click', function() {
+        score = 0;
+        scoreEl.textContent = 'SCORE: 0';
+        showPointFlash(bx, parseFloat(el.style.top), 'SCORE RESET!');
+        removeBomb(el);
+      });
+
+      function fallStep() {
+        if (!el.parentNode) return;
+        var top = parseFloat(el.style.top) + speed;
+        el.style.top = top + 'px';
+        if (top > window.innerHeight + 60) {
+          removeBomb(el);
+        } else {
+          requestAnimationFrame(fallStep);
+        }
+      }
+      requestAnimationFrame(fallStep);
+    }
+
+    function removeBomb(el) {
+      if (!el.parentNode) return;
+      el.remove();
+      var idx = activeBombs.indexOf(el);
+      if (idx > -1) activeBombs.splice(idx, 1);
+    }
+
+    function clearBombs() {
+      for (var i = activeBombs.length - 1; i >= 0; i--) {
+        removeBomb(activeBombs[i]);
+      }
+    }
+    // ---- END FALLING BOMBS -----------------------------------------------
 
     // ---- DEMON PUMPKIN CURSOR -------------------------------------------
     var cursorCanvas = document.getElementById('cursor-canvas');
