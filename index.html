@@ -343,6 +343,70 @@
       z-index: 50;
     }
 
+    /* ---- AGE GATE SKULL DOF ---- */
+    @keyframes skullPush {
+      0%   { transform: perspective(700px) scale(1.0);   opacity: 0.82; }
+      50%  { transform: perspective(700px) scale(1.14);  opacity: 1.0;  }
+      100% { transform: perspective(700px) scale(1.0);   opacity: 0.82; }
+    }
+    @keyframes skullGlow {
+      0%   { opacity: 0.55; }
+      50%  { opacity: 1.0;  }
+      100% { opacity: 0.55; }
+    }
+    .skull-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: url('skull.png') center 38% / contain no-repeat;
+    }
+    .skull-base {
+      z-index: 0;
+      animation: skullPush 5s ease-in-out infinite;
+    }
+    /* mid-ring blur — blurs from ~35% outward */
+    .skull-dof1 {
+      z-index: 1;
+      filter: blur(10px) brightness(0.88);
+      animation: skullPush 5s ease-in-out infinite;
+      -webkit-mask-image: radial-gradient(ellipse 52% 56% at 50% 38%,
+        transparent 32%, rgba(0,0,0,0.5) 50%, rgba(0,0,0,0.92) 68%, black 84%);
+      mask-image: radial-gradient(ellipse 52% 56% at 50% 38%,
+        transparent 32%, rgba(0,0,0,0.5) 50%, rgba(0,0,0,0.92) 68%, black 84%);
+    }
+    /* outer-ring heavy blur — blurs from ~18% outward */
+    .skull-dof2 {
+      z-index: 2;
+      filter: blur(26px) brightness(0.75);
+      animation: skullPush 5s ease-in-out infinite;
+      -webkit-mask-image: radial-gradient(ellipse 34% 38% at 50% 38%,
+        transparent 15%, rgba(0,0,0,0.3) 32%, rgba(0,0,0,0.85) 52%, black 70%);
+      mask-image: radial-gradient(ellipse 34% 38% at 50% 38%,
+        transparent 15%, rgba(0,0,0,0.3) 32%, rgba(0,0,0,0.85) 52%, black 70%);
+    }
+    /* deep vignette frame — focuses the eye on skull centre */
+    .skull-vignette {
+      z-index: 3;
+      background: none;
+      background-image: radial-gradient(ellipse 50% 54% at 50% 38%,
+        transparent 22%,
+        rgba(0,0,0,0.28) 42%,
+        rgba(0,0,0,0.65) 62%,
+        rgba(0,0,0,0.9) 80%,
+        black 100%);
+      animation: skullGlow 5s ease-in-out infinite;
+    }
+    /* eye-glow pulse — eerie purple light from the skull's eyes */
+    .skull-eyeglow {
+      z-index: 4;
+      background: none;
+      background-image:
+        radial-gradient(ellipse 8% 5% at 42% 46%, rgba(180,60,255,0.55) 0%, transparent 100%),
+        radial-gradient(ellipse 8% 5% at 58% 46%, rgba(180,60,255,0.55) 0%, transparent 100%),
+        radial-gradient(ellipse 28% 22% at 50% 46%, rgba(100,0,180,0.18) 0%, transparent 100%);
+      animation: skullGlow 2.2s ease-in-out infinite;
+    }
+
     #age-gate {
       position: fixed;
       inset: 0;
@@ -353,6 +417,12 @@
       align-items: center;
       justify-content: center;
       font-family: 'Courier New', monospace;
+      overflow: hidden;
+    }
+    /* age gate content floats above the skull layers */
+    #age-gate > *:not(.skull-layer) {
+      position: relative;
+      z-index: 10;
     }
 
     #age-gate h1 {
@@ -544,6 +614,11 @@
 <body>
 
   <div id="age-gate">
+    <div class="skull-layer skull-base"></div>
+    <div class="skull-layer skull-dof1"></div>
+    <div class="skull-layer skull-dof2"></div>
+    <div class="skull-layer skull-vignette"></div>
+    <div class="skull-layer skull-eyeglow"></div>
     <h1>MATRIX01</h1>
     <p>YOU MUST BE 18 OR OLDER TO ENTER</p>
     <div class="instructions">
