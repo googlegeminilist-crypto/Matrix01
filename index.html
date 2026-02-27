@@ -337,20 +337,29 @@
       pointer-events: none;
       z-index: 60;
       background:
-        radial-gradient(ellipse at 20% 10%,  rgba(140,0,0,0.7)  0%, transparent 45%),
-        radial-gradient(ellipse at 80% 15%,  rgba(120,0,0,0.65) 0%, transparent 40%),
-        radial-gradient(ellipse at 50% 100%, rgba(100,0,0,0.8)  0%, transparent 55%),
-        radial-gradient(ellipse at center,   rgba(60,0,0,0.3)   0%, rgba(10,0,0,0.95) 100%);
+        radial-gradient(ellipse at 15% 5%,   rgba(180,0,0,0.75) 0%, transparent 38%),
+        radial-gradient(ellipse at 85% 8%,   rgba(160,0,0,0.7)  0%, transparent 35%),
+        radial-gradient(ellipse at 5%  55%,  rgba(140,0,0,0.65) 0%, transparent 30%),
+        radial-gradient(ellipse at 95% 60%,  rgba(130,0,0,0.6)  0%, transparent 28%),
+        radial-gradient(ellipse at 48% 98%,  rgba(150,0,0,0.82) 0%, transparent 45%),
+        radial-gradient(ellipse at 50% 50%,  rgba(80,0,0,0.25)  0%, rgba(6,0,0,0.92) 100%);
       opacity: 0;
-      transition: opacity 0.15s ease;
+      transition: opacity 0.12s ease;
     }
     #bloody-overlay.active {
       animation: bloodyFlash 0.55s ease-in-out infinite;
     }
+    /* --- 3D BLOOD DRIP --- */
     @keyframes dripFall {
-      0%   { transform: scaleY(0.05); opacity: 0.9; }
-      60%  { opacity: 1; }
-      100% { transform: scaleY(1);    opacity: 0; }
+      0%   { transform: scaleY(0.02) translateZ(0); opacity: 1; }
+      65%  { opacity: 1; }
+      100% { transform: scaleY(1)    translateZ(0); opacity: 0.08; }
+    }
+    @keyframes dripDrop {
+      0%   { transform: scale(0.1) translateZ(0); opacity: 0; }
+      20%  { transform: scale(1.1) translateZ(0); opacity: 1; }
+      80%  { opacity: 0.9; }
+      100% { transform: scale(1)   translateZ(0); opacity: 0; }
     }
     .blood-drip {
       position: fixed;
@@ -358,19 +367,26 @@
       pointer-events: none;
       z-index: 61;
       transform-origin: top center;
-      border-radius: 0 0 60% 60%;
       animation: dripFall linear forwards;
     }
+    .blood-drop {
+      position: fixed;
+      pointer-events: none;
+      z-index: 62;
+      border-radius: 50% 50% 60% 60% / 45% 45% 55% 55%;
+      animation: dripDrop ease-out forwards;
+    }
+    /* --- 3D BLOOD SPLAT --- */
     @keyframes splatAppear {
-      0%   { transform: scale(0.2); opacity: 0.9; }
-      30%  { transform: scale(1.15); opacity: 1; }
-      100% { transform: scale(1);    opacity: 0; }
+      0%   { transform: scale(0.05) translateZ(0); opacity: 0; }
+      15%  { transform: scale(1.08) translateZ(0); opacity: 1; }
+      75%  { opacity: 0.92; }
+      100% { transform: scale(1.02) translateZ(0); opacity: 0; }
     }
     .blood-splat {
       position: fixed;
       pointer-events: none;
       z-index: 61;
-      border-radius: 40% 60% 55% 45% / 50% 45% 55% 50%;
       animation: splatAppear ease-out forwards;
     }
     @keyframes racePulse {
@@ -1132,67 +1148,174 @@
     var goreElements = [];
 
     function spawnDrip() {
-      var el = document.createElement('div');
-      el.className = 'blood-drip';
-      var w = 6 + Math.random() * 18;
-      var h = window.innerHeight * (0.3 + Math.random() * 0.7);
-      var dur = 0.6 + Math.random() * 1.2;
-      var r = Math.floor(120 + Math.random() * 60);
-      el.style.cssText = [
-        'left:' + (Math.random() * window.innerWidth) + 'px',
-        'width:' + w + 'px',
+      // depth layer: 0=near(sharp/large), 1=mid, 2=far(blurry/small)
+      var depth  = Math.floor(Math.random() * 3);
+      var blurPx = [0, 1.2, 3.5][depth];
+      var scale  = [1.0, 0.7, 0.42][depth];
+      var zIdx   = [63, 62, 61][depth];
+      var fresh  = Math.random() > 0.3; // fresh=bright red, false=dark venous
+
+      var w   = (5 + Math.random() * 18) * scale;
+      var h   = window.innerHeight * (0.22 + Math.random() * 0.65) * scale;
+      var dur = 0.65 + Math.random() * 1.4;
+      var x   = Math.random() * window.innerWidth;
+      var baseR = fresh ? (155 + Math.random()*90|0) : (75 + Math.random()*55|0);
+      var hiR   = fresh ? (255) : (130);
+      var hiG   = fresh ? (90)  : (20);
+
+      // streak: cylindrical 3D — highlight left edge, dark right edge
+      var streak = document.createElement('div');
+      streak.className = 'blood-drip';
+      streak.style.cssText = [
+        'left:'   + x + 'px',
+        'width:'  + w + 'px',
         'height:' + h + 'px',
-        'background:linear-gradient(to bottom, rgba(' + r + ',0,0,1) 0%, rgba(' + Math.floor(r*0.6) + ',0,0,0.7) 70%, transparent 100%)',
+        'z-index:' + zIdx,
+        'background:linear-gradient(to right,' +
+          'rgba(' + hiR + ',' + hiG + ',0,0.25) 0%,' +
+          'rgba(' + baseR + ',0,0,1) 18%,' +
+          'rgba(' + (baseR*0.5|0) + ',0,0,1) 72%,' +
+          'rgba(8,0,0,0.85) 100%)',
+        'border-radius:0 0 ' + (28+Math.random()*44|0) + '% ' + (18+Math.random()*32|0) + '%',
+        'box-shadow:' + (w*0.2|0) + 'px ' + (h*0.015|0) + 'px ' + (3+depth*3) + 'px rgba(0,0,0,' + (0.3+depth*0.18) + ')',
+        blurPx > 0 ? 'filter:blur(' + blurPx + 'px)' : '',
         'animation-duration:' + dur + 's'
-      ].join(';');
-      document.body.appendChild(el);
-      goreElements.push(el);
-      setTimeout(function() {
-        if (el.parentNode) el.remove();
-        var i = goreElements.indexOf(el);
-        if (i > -1) goreElements.splice(i, 1);
-      }, dur * 1000 + 100);
+      ].filter(Boolean).join(';');
+      document.body.appendChild(streak);
+      goreElements.push(streak);
+
+      // bulging teardrop at tip — sphere-like with specular highlight
+      var ds = (w * 1.9 + Math.random() * w * 1.1) * (fresh ? 1.1 : 0.85);
+      var drop = document.createElement('div');
+      drop.className = 'blood-drop';
+      drop.style.cssText = [
+        'left:' + (x - ds * 0.12) + 'px',
+        'top:'  + (h * 0.82) + 'px',
+        'width:'  + ds + 'px',
+        'height:' + (ds * (0.85 + Math.random() * 0.45)) + 'px',
+        'z-index:' + (zIdx + 1),
+        // 3D sphere: specular at 28%/22%, dark deep-red at edges
+        'background:radial-gradient(ellipse at 28% 22%,' +
+          'rgba(' + hiR + ',' + hiG + ',40,0.9) 0%,' +
+          'rgba(' + baseR + ',0,0,1) 36%,' +
+          'rgba(' + (baseR*0.38|0) + ',0,0,1) 68%,' +
+          'rgba(5,0,0,1) 100%)',
+        'box-shadow:' +
+          (ds*0.1|0) + 'px ' + (ds*0.14|0) + 'px ' + (ds*0.28|0) + 'px rgba(0,0,0,0.72),' +
+          '-' + (ds*0.04|0) + 'px -' + (ds*0.04|0) + 'px ' + (ds*0.1|0) + 'px rgba(255,70,10,0.18),' +
+          'inset ' + (ds*0.09|0) + 'px ' + (ds*0.09|0) + 'px ' + (ds*0.18|0) + 'px rgba(255,50,0,0.13),' +
+          'inset -' + (ds*0.09|0) + 'px -' + (ds*0.09|0) + 'px ' + (ds*0.16|0) + 'px rgba(0,0,0,0.55)',
+        blurPx > 0 ? 'filter:blur(' + (blurPx*0.55) + 'px)' : '',
+        'animation-duration:' + (dur * 1.12) + 's'
+      ].filter(Boolean).join(';');
+      document.body.appendChild(drop);
+      goreElements.push(drop);
+
+      var life = dur * 1000 + 200;
+      [streak, drop].forEach(function(el) {
+        setTimeout(function() {
+          if (el.parentNode) el.remove();
+          var i = goreElements.indexOf(el); if (i > -1) goreElements.splice(i, 1);
+        }, life);
+      });
     }
 
     function spawnSplat() {
+      var depth  = Math.floor(Math.random() * 3);
+      var blurPx = [0, 1.6, 4.2][depth];
+      var scale  = [1.0, 0.62, 0.36][depth];
+      var zIdx   = [63, 62, 61][depth];
+      var fresh  = Math.random() > 0.28;
+
+      var size = (55 + Math.random() * 150) * scale;
+      var hRat = 0.42 + Math.random() * 0.78;
+      var dur  = 0.85 + Math.random() * 1.3;
+      var x    = Math.random() * Math.max(1, window.innerWidth  - size);
+      var y    = Math.random() * Math.max(1, window.innerHeight - size * hRat);
+      var baseR = fresh ? (145 + Math.random()*90|0) : (65 + Math.random()*55|0);
+      var hiR   = fresh ? 255 : 120;
+      var hiG   = fresh ? 80  : 18;
+
+      var b = function() { return (22 + Math.random()*50|0); };
+      var borderRad = b()+'% '+b()+'% '+b()+'% '+b()+'% / '+b()+'% '+b()+'% '+b()+'% '+b()+'%';
+
       var el = document.createElement('div');
       el.className = 'blood-splat';
-      var size = 40 + Math.random() * 120;
-      var dur  = 0.8 + Math.random() * 1.0;
-      var r    = Math.floor(130 + Math.random() * 80);
-      var x    = Math.random() * window.innerWidth;
-      var y    = Math.random() * window.innerHeight;
-      // randomise the blob shape
-      var r1 = 30+Math.random()*30, r2 = 40+Math.random()*20,
-          r3 = 35+Math.random()*25, r4 = 45+Math.random()*20;
       el.style.cssText = [
-        'left:' + x + 'px',
-        'top:'  + y + 'px',
-        'width:' + size + 'px',
-        'height:' + (size * (0.5 + Math.random() * 0.8)) + 'px',
-        'background:rgba(' + r + ',0,0,0.85)',
-        'border-radius:' + r1 + '% ' + r2 + '% ' + r3 + '% ' + r4 + '% / ' + r4 + '% ' + r1 + '% ' + r2 + '% ' + r3 + '%',
+        'left:'   + x + 'px',
+        'top:'    + y + 'px',
+        'width:'  + size + 'px',
+        'height:' + (size * hRat) + 'px',
+        'z-index:' + zIdx,
+        'border-radius:' + borderRad,
+        // 3D: specular highlight top-left, dark base, very dark edges
+        'background:radial-gradient(ellipse at 27% 20%,' +
+          'rgba(' + hiR + ',' + hiG + ',18,0.88) 0%,' +
+          'rgba(' + baseR + ',0,0,0.97) 28%,' +
+          'rgba(' + (baseR*0.42|0) + ',0,0,1) 62%,' +
+          'rgba(4,0,0,1) 100%)',
+        // cast shadow + inner depth + rim highlight
+        'box-shadow:' +
+          (size*0.08|0) + 'px ' + (size*0.13|0) + 'px ' + (size*0.24|0) + 'px rgba(0,0,0,' + (0.55+depth*0.14) + '),' +
+          '0 0 ' + (size*0.07|0) + 'px rgba(0,0,0,0.38),' +
+          'inset ' + (size*0.06|0) + 'px ' + (size*0.06|0) + 'px ' + (size*0.14|0) + 'px rgba(255,45,0,0.11),' +
+          'inset -' + (size*0.07|0) + 'px -' + (size*0.07|0) + 'px ' + (size*0.17|0) + 'px rgba(0,0,0,0.55)',
+        blurPx > 0 ? 'filter:blur(' + blurPx + 'px)' : '',
         'animation-duration:' + dur + 's'
-      ].join(';');
+      ].filter(Boolean).join(';');
       document.body.appendChild(el);
       goreElements.push(el);
+
+      // satellite micro-droplets scattered around large splatters
+      if (size > 45 && Math.random() < 0.65) {
+        var numSats = 2 + Math.floor(Math.random() * 5);
+        for (var s = 0; s < numSats; s++) {
+          (function(delay) {
+            setTimeout(function() {
+              if (bgVisible) return;
+              var sat = document.createElement('div');
+              sat.className = 'blood-splat';
+              var ss    = (3 + Math.random() * 13) * scale;
+              var angle = Math.random() * Math.PI * 2;
+              var dist  = size * (0.55 + Math.random() * 0.8);
+              var sx = x + size/2  + Math.cos(angle)*dist - ss/2;
+              var sy = y + size*hRat/2 + Math.sin(angle)*dist - ss/2;
+              var b2 = function() { return (28+Math.random()*44|0); };
+              sat.style.cssText = [
+                'left:' + sx + 'px', 'top:' + sy + 'px',
+                'width:' + ss + 'px', 'height:' + (ss*(0.55+Math.random()*0.9)) + 'px',
+                'z-index:' + zIdx,
+                'border-radius:'+b2()+'% '+b2()+'% '+b2()+'% '+b2()+'% / '+b2()+'% '+b2()+'% '+b2()+'% '+b2()+'%',
+                'background:radial-gradient(ellipse at 30% 24%,rgba(255,70,20,0.82) 0%,rgba('+baseR+',0,0,0.96) 38%,rgba(18,0,0,1) 100%)',
+                'box-shadow:'+(ss*0.1|0)+'px '+(ss*0.15|0)+'px '+(ss*0.26|0)+'px rgba(0,0,0,0.65)',
+                blurPx > 0 ? 'filter:blur(' + blurPx + 'px)' : '',
+                'animation-duration:' + (dur * 0.75) + 's'
+              ].filter(Boolean).join(';');
+              document.body.appendChild(sat);
+              goreElements.push(sat);
+              setTimeout(function() {
+                if (sat.parentNode) sat.remove();
+                var i = goreElements.indexOf(sat); if (i > -1) goreElements.splice(i, 1);
+              }, dur * 750 + 100);
+            }, delay);
+          }(Math.random() * 130));
+        }
+      }
+
       setTimeout(function() {
         if (el.parentNode) el.remove();
-        var i = goreElements.indexOf(el);
-        if (i > -1) goreElements.splice(i, 1);
-      }, dur * 1000 + 100);
+        var i = goreElements.indexOf(el); if (i > -1) goreElements.splice(i, 1);
+      }, dur * 1000 + 200);
     }
 
     function startBloodGore() {
-      // burst of drips and splats immediately
-      for (var i = 0; i < 5; i++) spawnDrip();
-      for (var j = 0; j < 4; j++) spawnSplat();
-      // keep spawning while image is gone
+      for (var i = 0; i < 8; i++) spawnDrip();
+      for (var j = 0; j < 6; j++) spawnSplat();
       goreInterval = setInterval(function() {
-        if (Math.random() < 0.7) spawnDrip();
-        if (Math.random() < 0.5) spawnSplat();
-        if (Math.random() < 0.3) spawnDrip(); // occasional extra drip
-      }, 300);
+        var nd = Math.floor(Math.random() * 3);
+        for (var k = 0; k <= nd; k++) if (Math.random() < 0.82) spawnDrip();
+        if (Math.random() < 0.68) spawnSplat();
+      }, 200);
     }
 
     function stopBloodGore() {
