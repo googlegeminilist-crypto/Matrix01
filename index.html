@@ -409,9 +409,9 @@
 
     /* ── 3D BLOOD WARNING TEXT ── */
     @keyframes bloodPulse {
-      0%   { opacity: 0.65; filter: brightness(0.85); }
-      45%  { opacity: 1.00; filter: brightness(1.55) drop-shadow(0 0 20px #ff0000) drop-shadow(0 0 50px #880000); }
-      100% { opacity: 0.65; filter: brightness(0.85); }
+      0%   { opacity: 0.72; filter: brightness(0.82) saturate(1.1); }
+      40%  { opacity: 1.00; filter: brightness(1.08) saturate(1.6) drop-shadow(2px 4px 3px #1a0000); }
+      100% { opacity: 0.72; filter: brightness(0.82) saturate(1.1); }
     }
     @keyframes bloodFloat {
       0%   { transform: translateY(0px); }
@@ -444,39 +444,39 @@
     /* FAR — most blurred, darkest, offset deepest */
     .wt-far {
       filter: blur(14px);
-      color: #3a0000;
-      transform: translate(13px, 16px) scale(1.025);
-      opacity: 0.28;
+      color: #300000;
+      transform: translate(12px, 16px) scale(1.025);
+      opacity: 0.32;
     }
     /* MID — soft blur */
     .wt-mid {
-      filter: blur(5px);
-      color: #aa0000;
-      transform: translate(5px, 6px);
-      opacity: 0.50;
+      filter: blur(6px);
+      color: #7a0000;
+      transform: translate(6px, 8px);
+      opacity: 0.55;
     }
     /* NEAR — sharp, bright, 12-step 3D blood extrusion + perspective */
     .wt-near {
-      color: #ff3300;
+      /* fresh arterial blood — dark crimson, wet shine, no neon glow */
+      color: #c41200;
       animation: bloodPulse 4.2s ease-in-out infinite, bloodFloat 7s ease-in-out infinite;
       text-shadow:
-        0 0  2px  #ffffff,
-        0 0  5px  rgba(255, 120,  0, 1.00),
-        0 0 12px  rgba(240,   0,  0, 1.00),
-        0 0 25px  rgba(200,   0,  0, 0.80),
-        0 0 55px  rgba(130,   0,  0, 0.50),
-        1px  1px  0 #cc0000,
-        2px  2px  0 #bb0000,
-        3px  3px  0 #aa0000,
-        4px  4px  0 #990000,
-        5px  5px  0 #880000,
-        6px  6px  0 #770000,
-        7px  7px  0 #660000,
-        8px  8px  0 #550000,
-        9px  9px  0 #440000,
-       10px 10px  0 #330000,
-       11px 11px  0 #220000,
-       12px 12px  8px rgba(0, 0, 0, 0.98);
+        /* wet-blood specular highlight — tiny bright spot top-left */
+        -1px -1px 0 rgba(220, 80, 60, 0.55),
+        /* dark edge rim — makes letters feel solid/carved */
+         0    0   1px #0a0000,
+        /* 3D extrusion — dark blood stepping into the screen */
+        1px  2px  0 #a01000,
+        2px  4px  0 #8c0e00,
+        3px  6px  0 #780c00,
+        4px  8px  0 #640a00,
+        5px 10px  0 #500800,
+        6px 12px  0 #3c0600,
+        7px 14px  0 #280400,
+        8px 16px  0 #140200,
+        /* deep pool shadow at base */
+        9px 18px  6px rgba(8, 0, 0, 0.92),
+       12px 22px 12px rgba(0, 0, 0, 0.85);
     }
 
     /* ── BLOOD DRIPS ── */
@@ -503,9 +503,9 @@
     /* EXTRA-FAR layer — heaviest blur, phantom depth */
     .wt-xfar {
       filter: blur(22px);
-      color: #250000;
-      transform: translate(22px, 26px) scale(1.04);
-      opacity: 0.18;
+      color: #1a0000;
+      transform: translate(22px, 28px) scale(1.05);
+      opacity: 0.22;
     }
 
         #age-gate {
@@ -836,7 +836,7 @@
         var w     = [1.2, 2.2, 3.5][tier];
         var h     = 12 + Math.random() * 65;
         var dur   = 1.8 + Math.random() * 5;
-        var col   = ['#5a0000','#aa0000','#ee1100'][tier];
+        var col   = ['#3a0000','#7a0000','#b81000'][tier];
         var opac  = [0.28, 0.55, 0.92][tier];
         var blurV = ['blur(6px)','blur(2px)','none'][tier];
 
