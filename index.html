@@ -409,13 +409,18 @@
 
     /* ── 3D BLOOD WARNING TEXT ── */
     @keyframes bloodPulse {
-      0%   { opacity: 0.72; }
-      50%  { opacity: 1.00; filter: brightness(1.35) drop-shadow(0 0 14px #ff0000); }
-      100% { opacity: 0.72; }
+      0%   { opacity: 0.65; filter: brightness(0.85); }
+      45%  { opacity: 1.00; filter: brightness(1.55) drop-shadow(0 0 20px #ff0000) drop-shadow(0 0 50px #880000); }
+      100% { opacity: 0.65; filter: brightness(0.85); }
+    }
+    @keyframes bloodFloat {
+      0%   { transform: translateY(0px); }
+      50%  { transform: translateY(-6px); }
+      100% { transform: translateY(0px); }
     }
     #warning-wrap {
       position: absolute !important;
-      left: 55%;
+      left: 64%;
       top: 0;
       right: 0;
       bottom: 0;
@@ -433,43 +438,77 @@
       padding: 2vh 2vw 2vh 1vw;
       box-sizing: border-box;
       font-family: 'Courier New', monospace;
-      font-size: clamp(0.55rem, 1.1vw, 0.9rem);
-      line-height: 2.0;
+      font-size: clamp(0.75rem, 1.5vw, 1.15rem);
+      line-height: 2.2;
     }
     /* FAR — most blurred, darkest, offset deepest */
     .wt-far {
-      filter: blur(9px);
-      color: #4a0000;
-      transform: translate(7px, 9px) scale(1.018);
-      opacity: 0.45;
+      filter: blur(14px);
+      color: #3a0000;
+      transform: translate(13px, 16px) scale(1.025);
+      opacity: 0.28;
     }
     /* MID — soft blur */
     .wt-mid {
-      filter: blur(3px);
-      color: #8b0000;
-      transform: translate(2.5px, 3.5px);
-      opacity: 0.60;
+      filter: blur(5px);
+      color: #aa0000;
+      transform: translate(5px, 6px);
+      opacity: 0.50;
     }
-    /* NEAR — sharp, bright, 3D extruded blood */
+    /* NEAR — sharp, bright, 12-step 3D blood extrusion + perspective */
     .wt-near {
-      color: #ff1a00;
+      color: #ff3300;
+      animation: bloodPulse 4.2s ease-in-out infinite, bloodFloat 7s ease-in-out infinite;
       text-shadow:
-        0 0 4px  rgba(255, 50,  0, 1.0),
-        0 0 12px rgba(210,  0,  0, 0.85),
-        0 0 28px rgba(160,  0,  0, 0.50),
-        0 0 55px rgba(100,  0,  0, 0.25),
-        1px 1px 0 #bb0000,
-        2px 2px 0 #aa0000,
-        3px 3px 0 #990000,
-        4px 4px 0 #880000,
-        5px 5px 0 #770000,
-        6px 6px 0 #660000,
-        7px 7px 0 #550000,
-        8px 8px 5px rgba(0, 0, 0, 0.95);
-      animation: bloodPulse 4s ease-in-out infinite;
+        0 0  2px  #ffffff,
+        0 0  5px  rgba(255, 120,  0, 1.00),
+        0 0 12px  rgba(240,   0,  0, 1.00),
+        0 0 25px  rgba(200,   0,  0, 0.80),
+        0 0 55px  rgba(130,   0,  0, 0.50),
+        1px  1px  0 #cc0000,
+        2px  2px  0 #bb0000,
+        3px  3px  0 #aa0000,
+        4px  4px  0 #990000,
+        5px  5px  0 #880000,
+        6px  6px  0 #770000,
+        7px  7px  0 #660000,
+        8px  8px  0 #550000,
+        9px  9px  0 #440000,
+       10px 10px  0 #330000,
+       11px 11px  0 #220000,
+       12px 12px  8px rgba(0, 0, 0, 0.98);
     }
 
-    #age-gate {
+    /* ── BLOOD DRIPS ── */
+    @keyframes dripFall {
+      0%   { transform: translateY(0);    opacity: 0;    }
+      6%   { opacity: 1;                                 }
+      90%  { opacity: 0.88;                              }
+      100% { transform: translateY(105vh); opacity: 0.2; }
+    }
+    .blood-drip {
+      position: absolute;
+      pointer-events: none;
+      border-radius: 0 0 40% 40%;
+      animation: dripFall linear forwards;
+      z-index: 9;
+    }
+    .blood-blob {
+      position: absolute;
+      bottom: -55%;
+      left: 50%;
+      transform: translateX(-50%);
+      border-radius: 50%;
+    }
+    /* EXTRA-FAR layer — heaviest blur, phantom depth */
+    .wt-xfar {
+      filter: blur(22px);
+      color: #250000;
+      transform: translate(22px, 26px) scale(1.04);
+      opacity: 0.18;
+    }
+
+        #age-gate {
       position: fixed;
       inset: 0;
       background: #000;
@@ -779,12 +818,57 @@
         return '<span style="display:block">' + l + '</span>';
       }).join('');
       var wrap = document.getElementById('warning-wrap');
-      ['far', 'mid', 'near'].forEach(function(d) {
+      ['xfar', 'far', 'mid', 'near'].forEach(function(d) {
         var div = document.createElement('div');
         div.className = 'wt-layer wt-' + d;
         div.innerHTML = html;
         wrap.appendChild(div);
       });
+      // ── BLOOD DRIP SPAWNER ──
+      var dripWrap = document.getElementById('warning-wrap');
+
+      function spawnDrip() {
+        var drip = document.createElement('div');
+        drip.className = 'blood-drip';
+
+        // random depth tier: 0=far dim, 1=mid, 2=near bright
+        var tier  = Math.random() < 0.25 ? 0 : (Math.random() < 0.5 ? 1 : 2);
+        var w     = [1.2, 2.2, 3.5][tier];
+        var h     = 12 + Math.random() * 65;
+        var dur   = 1.8 + Math.random() * 5;
+        var col   = ['#5a0000','#aa0000','#ee1100'][tier];
+        var opac  = [0.28, 0.55, 0.92][tier];
+        var blurV = ['blur(6px)','blur(2px)','none'][tier];
+
+        drip.style.left             = (1 + Math.random() * 97) + '%';
+        drip.style.top              = (8 + Math.random() * 55) + '%';
+        drip.style.width            = w + 'px';
+        drip.style.height           = h + 'px';
+        drip.style.opacity          = opac;
+        drip.style.filter           = blurV;
+        drip.style.animationDuration = dur + 's';
+        drip.style.background = 'linear-gradient(to bottom,' + col + ' 0%, #330000 70%, #110000 100%)';
+
+        // teardrop blob at tip
+        var bW = w * (2.8 + Math.random() * 1.8);
+        var bH = bW * (0.7 + Math.random() * 0.7);
+        var blob = document.createElement('div');
+        blob.className = 'blood-blob';
+        blob.style.width      = bW + 'px';
+        blob.style.height     = bH + 'px';
+        blob.style.background = 'radial-gradient(circle at 50% 40%, ' + col + ' 0%, #440000 55%, transparent 100%)';
+        drip.appendChild(blob);
+
+        dripWrap.appendChild(drip);
+        drip.addEventListener('animationend', function() { drip.remove(); });
+      }
+
+      // staggered initial burst then steady drip
+      for (var di = 0; di < 6; di++) {
+        setTimeout(spawnDrip, di * 220);
+      }
+      setInterval(spawnDrip, 380 + Math.floor(Math.random() * 320));
+
     })();
     ageInput.addEventListener('keydown', function(e) {
       if (e.key === 'Enter') checkAge();
