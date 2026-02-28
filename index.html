@@ -319,6 +319,37 @@
       opacity: 0.4;
     }
 
+    #age-music-btn {
+      position: absolute !important;
+      top: 1.2rem;
+      right: 1.5rem;
+      z-index: 50;
+      background: rgba(60,0,0,0.75);
+      border: 1px solid #8b0000;
+      color: #cc0000;
+      font-size: 1.1rem;
+      width: 2.4rem;
+      height: 2.4rem;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0.85;
+      transition: opacity 0.2s, border-color 0.2s, box-shadow 0.2s;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    #age-music-btn:hover {
+      opacity: 1;
+      border-color: #ff2200;
+      box-shadow: 0 0 12px rgba(200,0,0,0.65);
+    }
+    #age-music-btn.muted {
+      color: #440000;
+      border-color: #330000;
+      opacity: 0.45;
+    }
+
     #snake-canvas {
       position: fixed;
       top: 0;
@@ -537,7 +568,7 @@
       overflow: hidden;
     }
     /* age gate content floats above the skull layers */
-    #age-gate > *:not(.skull-layer):not(#warning-wrap) {
+    #age-gate > *:not(.skull-layer):not(#warning-wrap):not(#age-music-btn):not(audio) {
       position: relative;
       z-index: 10;
       max-width: 28vw;
@@ -736,6 +767,8 @@
 <body>
 
   <div id="age-gate">
+    <audio id="age-music" src="age-music.mp3" loop preload="auto"></audio>
+    <button type="button" id="age-music-btn" title="Toggle music">&#9834;</button>
     <div id="warning-wrap"></div>
     <div class="skull-layer skull-base"></div>
     <div class="skull-layer skull-dof1"></div>
@@ -1973,6 +2006,69 @@
       requestAnimationFrame(animateCursor);
     }
     animateCursor();
+
+    // ── AGE SCREEN MUSIC ──────────────────────────────────────────────────
+    (function() {
+      var ageAudio  = document.getElementById('age-music');
+      var ageMusBtn = document.getElementById('age-music-btn');
+      var ageMusOn  = false;
+      var interacted = false;
+      ageAudio.volume = 0.55;
+
+      function startMusic() {
+        var p = ageAudio.play();
+        if (p !== undefined) {
+          p.then(function() {
+            ageMusOn = true;
+            ageMusBtn.classList.remove('muted');
+            ageMusBtn.innerHTML = '&#9834;';
+          }).catch(function() {
+            // browser blocked autoplay — wait for click
+            ageMusOn = false;
+          });
+        } else {
+          ageMusOn = true;
+          ageMusBtn.classList.remove('muted');
+          ageMusBtn.innerHTML = '&#9834;';
+        }
+      }
+
+      function stopMusic() {
+        ageAudio.pause();
+        ageAudio.currentTime = 0;
+        ageMusOn = false;
+        ageMusBtn.classList.add('muted');
+        ageMusBtn.innerHTML = '&#9835;';
+      }
+
+      // try autoplay immediately
+      startMusic();
+
+      // first interaction anywhere on the age gate starts music if blocked
+      document.getElementById('age-gate').addEventListener('click', function() {
+        if (!interacted && !ageMusOn) {
+          interacted = true;
+          startMusic();
+        }
+      }, { once: false });
+
+      // toggle button
+      ageMusBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        interacted = true;
+        if (ageMusOn) {
+          stopMusic();
+        } else {
+          startMusic();
+        }
+      });
+
+      // stop when entering the site
+      document.getElementById('age-btn').addEventListener('click', function() {
+        var val = parseInt(document.getElementById('age-input').value, 10);
+        if (!isNaN(val) && val >= 18) stopMusic();
+      });
+    })();
     // -----------------------------------------------------------------------
   </script>
 </body>
