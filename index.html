@@ -481,24 +481,38 @@
 
     /* ── BLOOD DRIPS ── */
     @keyframes dripFall {
-      0%   { transform: translateY(0);    opacity: 0;    }
-      6%   { opacity: 1;                                 }
-      90%  { opacity: 0.88;                              }
-      100% { transform: translateY(105vh); opacity: 0.2; }
+      0%   { transform: translateY(-4px) scaleY(0.2); opacity: 0; }
+      4%   { transform: translateY(0)    scaleY(1.0); opacity: 1; }
+      94%  { opacity: 0.90; }
+      100% { transform: translateY(108vh) scaleY(1.0); opacity: 0.15; }
+    }
+    @keyframes dripWobble {
+      0%   { transform: translateY(-4px) scaleY(0.2) translateX(0);    opacity: 0; }
+      4%   { transform: translateY(0)    scaleY(1.0) translateX(0);    opacity: 1; }
+      20%  { transform: translateY(20vh) scaleY(1.0) translateX(1.5px); }
+      40%  { transform: translateY(40vh) scaleY(1.0) translateX(-1px);  }
+      65%  { transform: translateY(65vh) scaleY(1.0) translateX(1px);   }
+      94%  { opacity: 0.90; }
+      100% { transform: translateY(108vh) scaleY(1.0) translateX(0);   opacity: 0.15; }
     }
     .blood-drip {
       position: absolute;
       pointer-events: none;
-      border-radius: 0 0 40% 40%;
-      animation: dripFall linear forwards;
+      transform-origin: top center;
+      border-radius: 0 0 3px 3px;
       z-index: 9;
     }
     .blood-blob {
       position: absolute;
-      bottom: -55%;
+      bottom: -60%;
       left: 50%;
       transform: translateX(-50%);
+      border-radius: 42% 42% 50% 50%;
+    }
+    .blood-blob-sat {
+      position: absolute;
       border-radius: 50%;
+      pointer-events: none;
     }
     /* EXTRA-FAR layer — heaviest blur, phantom depth */
     .wt-xfar {
@@ -824,50 +838,95 @@
         div.innerHTML = html;
         wrap.appendChild(div);
       });
-      // ── BLOOD DRIP SPAWNER ──
+      // ── BLOOD DRIP SPAWNER — 4-tier 3D depth of field ──
       var dripWrap = document.getElementById('warning-wrap');
 
+      // 4 depth tiers: 0=xfar(ghost), 1=far, 2=mid, 3=near(foreground)
+      var TIERS = {
+        w:    [0.6,  1.2,  2.4,  4.5],   // streak width px
+        hMin: [8,    14,   22,   35],     // min streak height px
+        hMax: [25,   45,   75,   120],    // max streak height px
+        dur:  [5.5,  3.8,  2.4,  1.5],   // base fall duration s
+        durV: [2.0,  2.0,  1.5,  1.0],   // duration variance s
+        col:  ['#280000','#4a0000','#880000','#c41200'],
+        hi:   ['#3a0000','#6a0000','#aa1100','#e02000'], // highlight col
+        opac: [0.18,  0.38,  0.65,  0.95],
+        blur: ['blur(12px)','blur(6px)','blur(2px)','none'],
+        bMul: [1.8,  2.2,  3.0,  4.2],   // blob size multiplier
+        anim: ['dripFall','dripFall','dripFall','dripWobble']
+      };
+
+      function rnd(a, b) { return a + Math.random() * (b - a); }
+
       function spawnDrip() {
+        // weight toward near tiers for drama: xfar=10%, far=20%, mid=30%, near=40%
+        var r = Math.random();
+        var tier = r < 0.10 ? 0 : r < 0.30 ? 1 : r < 0.60 ? 2 : 3;
+
+        var T    = TIERS;
+        var col  = T.col[tier];
+        var hi   = T.hi[tier];
+        var w    = T.w[tier];
+        var h    = rnd(T.hMin[tier], T.hMax[tier]);
+        var dur  = T.dur[tier] + rnd(0, T.durV[tier]);
+        var opac = T.opac[tier] * rnd(0.85, 1.0);
+
         var drip = document.createElement('div');
         drip.className = 'blood-drip';
-
-        // random depth tier: 0=far dim, 1=mid, 2=near bright
-        var tier  = Math.random() < 0.25 ? 0 : (Math.random() < 0.5 ? 1 : 2);
-        var w     = [1.2, 2.2, 3.5][tier];
-        var h     = 12 + Math.random() * 65;
-        var dur   = 1.8 + Math.random() * 5;
-        var col   = ['#3a0000','#7a0000','#b81000'][tier];
-        var opac  = [0.28, 0.55, 0.92][tier];
-        var blurV = ['blur(6px)','blur(2px)','none'][tier];
-
-        drip.style.left             = (1 + Math.random() * 97) + '%';
-        drip.style.top              = (8 + Math.random() * 55) + '%';
-        drip.style.width            = w + 'px';
-        drip.style.height           = h + 'px';
-        drip.style.opacity          = opac;
-        drip.style.filter           = blurV;
+        drip.style.left    = rnd(1, 97) + '%';
+        drip.style.top     = rnd(5, 60) + '%';
+        drip.style.width   = w + 'px';
+        drip.style.height  = h + 'px';
+        drip.style.opacity = opac;
+        drip.style.filter  = T.blur[tier];
+        drip.style.animationName     = T.anim[tier];
         drip.style.animationDuration = dur + 's';
-        drip.style.background = 'linear-gradient(to bottom,' + col + ' 0%, #330000 70%, #110000 100%)';
+        drip.style.animationTimingFunction = 'ease-in';
+        drip.style.animationFillMode = 'forwards';
+        // streak: bright top (fresh), dark bottom (drying)
+        drip.style.background =
+          'linear-gradient(to bottom,' + hi + ' 0%, ' + col + ' 40%, #220000 80%, #080000 100%)';
 
-        // teardrop blob at tip
-        var bW = w * (2.8 + Math.random() * 1.8);
-        var bH = bW * (0.7 + Math.random() * 0.7);
+        // ── Primary teardrop blob ─────────────────────────────────────
+        var bW = w * T.bMul[tier] * rnd(0.85, 1.2);
+        var bH = bW * rnd(0.8, 1.4);
         var blob = document.createElement('div');
         blob.className = 'blood-blob';
-        blob.style.width      = bW + 'px';
-        blob.style.height     = bH + 'px';
-        blob.style.background = 'radial-gradient(circle at 50% 40%, ' + col + ' 0%, #440000 55%, transparent 100%)';
+        blob.style.width  = bW + 'px';
+        blob.style.height = bH + 'px';
+        // wet specular: bright top-left, dark outer ring
+        blob.style.background =
+          'radial-gradient(ellipse at 35% 30%, ' + hi + ' 0%, ' + col + ' 45%, #1a0000 80%, transparent 100%)';
+        blob.style.boxShadow = '0 ' + (bH * 0.3) + 'px ' + (bH * 0.5) + 'px rgba(0,0,0,0.7)';
         drip.appendChild(blob);
+
+        // ── Satellite micro-drops (near/mid only) ────────────────────
+        if (tier >= 2) {
+          var numSat = tier === 3 ? Math.floor(rnd(1, 4)) : Math.floor(rnd(0, 2));
+          for (var s = 0; s < numSat; s++) {
+            var sat = document.createElement('div');
+            sat.className = 'blood-blob-sat';
+            var sR = bW * rnd(0.12, 0.32);
+            sat.style.width    = sR * 2 + 'px';
+            sat.style.height   = sR * 2 + 'px';
+            sat.style.bottom   = (-bH * rnd(0.8, 2.2)) + 'px';
+            sat.style.left     = (w / 2 + rnd(-bW * 1.2, bW * 1.2)) + 'px';
+            sat.style.background =
+              'radial-gradient(circle at 40% 35%, ' + hi + ' 0%, ' + col + ' 55%, transparent 100%)';
+            drip.appendChild(sat);
+          }
+        }
 
         dripWrap.appendChild(drip);
         drip.addEventListener('animationend', function() { drip.remove(); });
       }
 
-      // staggered initial burst then steady drip
-      for (var di = 0; di < 6; di++) {
-        setTimeout(spawnDrip, di * 220);
+      // staggered burst on load
+      for (var di = 0; di < 12; di++) {
+        setTimeout(spawnDrip, di * 160);
       }
-      setInterval(spawnDrip, 380 + Math.floor(Math.random() * 320));
+      // steady drip stream — faster for more coverage
+      setInterval(spawnDrip, 180 + Math.floor(Math.random() * 200));
 
     })();
     ageInput.addEventListener('keydown', function(e) {
