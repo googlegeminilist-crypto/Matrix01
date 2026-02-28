@@ -2035,15 +2035,36 @@
       var ageAudio    = document.getElementById('age-music');
       var ageMusBtn   = document.getElementById('age-music-btn');
       var villainIntro = new Audio('villain-intro.mp3');
+      var thunder      = new Audio('thunder.mp3');
       var ageMusOn    = false;
       var interacted  = false;
       var introPlayed = false;
-      ageAudio.volume     = 0.7;
-      villainIntro.volume = 0.65;
+      var thunderOn   = false;
+      ageAudio.volume     = 0.75;
+      villainIntro.volume = 0.80;
+      thunder.volume      = 0.30;
+      thunder.preload     = 'auto';
+      // ended fires reliably when loop is NOT set — restart manually
+      thunder.addEventListener('ended', function() {
+        if (!thunderOn) return;
+        thunder.currentTime = 0;
+        thunder.play().catch(function(){});
+      });
+
+      function startThunder() {
+        thunderOn = true;
+        thunder.currentTime = 0;
+        thunder.play().catch(function(){});
+      }
+      function stopThunder() {
+        thunderOn = false;
+        thunder.pause();
+        thunder.currentTime = 0;
+      }
 
       function startMusic() {
-        // start both at the same time
         ageAudio.play().catch(function(){});
+        startThunder();
         if (!introPlayed) {
           introPlayed = true;
           villainIntro.play().catch(function(){});
@@ -2056,6 +2077,7 @@
       function stopMusic() {
         ageAudio.pause();
         ageAudio.currentTime = 0;
+        stopThunder();
         ageMusOn = false;
         ageMusBtn.classList.add('muted');
         ageMusBtn.innerHTML = '&#9835;';
@@ -2254,7 +2276,7 @@
         flash(el, dur, 1.0);
       }
 
-      var TYPES = [doLightning,doLightning,doLightning,doLaser,doLaser,doText,doPulse,doPulse];
+      var TYPES = [doLightning];
 
       function tick() {
         var ag = document.getElementById('age-gate');
