@@ -2091,6 +2091,185 @@
         if (!isNaN(val) && val >= 18) stopMusic();
       });
     })();
+    // ── AGE SCREEN HORROR FLASHES (lightning + laser + DOF) ─────────────
+    (function() {
+      var gate = document.getElementById('age-gate');
+      var MSGS = ['GET OUT','RUN','LEAVE NOW','DEATH WAITS','YOU WILL DIE',
+                  'TURN BACK','I SEE YOU','DO NOT ENTER','NO ESCAPE',
+                  'YOU ARE MINE','HE IS HERE','YOUR SOUL IS HIS'];
+
+      function rx() { return 42 + Math.random() * 52; }
+      function ry() { return 4  + Math.random() * 88; }
+
+      function flash(el, dur, op) {
+        var fi = Math.max(6, dur * 0.06);
+        var fo = dur * 0.58;
+        el.style.opacity = '0';
+        gate.appendChild(el);
+        requestAnimationFrame(function() {
+          requestAnimationFrame(function() {
+            el.style.transition = 'opacity ' + fi + 'ms ease-out';
+            el.style.opacity = op;
+            setTimeout(function() {
+              el.style.transition = 'opacity ' + fo + 'ms ease-in';
+              el.style.opacity = '0';
+              setTimeout(function() { if (el.parentNode) el.remove(); }, fo + 20);
+            }, fi + dur * 0.32);
+          });
+        });
+      }
+
+      // collect midpoint-displaced bolt segments into flat array [x1,y1,x2,y2,...]
+      function boltSegs(x1,y1,x2,y2,r,d,out) {
+        if (d === 0) { out.push(x1,y1,x2,y2); return; }
+        var len = Math.sqrt((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1)) || 1;
+        var nx  = -(y2-y1)/len, ny = (x2-x1)/len;
+        var mx  = (x1+x2)/2 + nx*(Math.random()*2-1)*r*len;
+        var my  = (y1+y2)/2 + ny*(Math.random()*2-1)*r*len;
+        boltSegs(x1,y1,mx,my,r*0.62,d-1,out);
+        boltSegs(mx,my,x2,y2,r*0.62,d-1,out);
+        if (d >= 3 && Math.random() < 0.5) {
+          var bx = mx+(Math.random()*2-1)*55, by = my+20+Math.random()*55;
+          boltSegs(mx,my,bx,by,r*0.55,d-2,out);
+        }
+      }
+
+      function strokeSegs(ctx,segs,lw,col) {
+        ctx.beginPath();
+        for (var i=0;i<segs.length;i+=4){ctx.moveTo(segs[i],segs[i+1]);ctx.lineTo(segs[i+2],segs[i+3]);}
+        ctx.strokeStyle=col; ctx.lineWidth=lw; ctx.lineCap='round'; ctx.stroke();
+      }
+
+      function makeBoltCanvas(w, lw, cssBlur) {
+        var h  = Math.min(window.innerHeight, 780) + 20;
+        var cv = document.createElement('canvas');
+        cv.width = w; cv.height = h;
+        var ctx = cv.getContext('2d');
+        var sx  = w*(0.35+Math.random()*0.3);
+        var ex  = sx + (Math.random()*2-1)*w*0.28;
+        var segs = [];
+        boltSegs(sx, 0, ex, h, 0.26, 5, segs);
+        strokeSegs(ctx, segs, lw*9,   'rgba(120,60,255,0.06)');
+        strokeSegs(ctx, segs, lw*4.5, 'rgba(170,100,255,0.14)');
+        strokeSegs(ctx, segs, lw*2,   'rgba(210,170,255,0.38)');
+        strokeSegs(ctx, segs, lw,     'rgba(248,240,255,0.97)');
+        // top corona bloom
+        var g = ctx.createRadialGradient(sx,0,0,sx,0,w*0.55);
+        g.addColorStop(0,'rgba(160,100,255,0.20)');
+        g.addColorStop(1,'transparent');
+        ctx.globalCompositeOperation='lighter';
+        ctx.fillStyle=g; ctx.fillRect(0,0,w,h*0.22);
+        ctx.globalCompositeOperation='source-over';
+        cv.style.position='absolute'; cv.style.pointerEvents='none'; cv.style.top='0';
+        if(cssBlur>0) cv.style.filter='blur('+cssBlur+'px)';
+        return cv;
+      }
+
+      function doLightning() {
+        var x   = rx();
+        var dur = 90 + Math.random() * 160;
+        var layers = [
+          {w:520, lw:8,   blur:22, op:0.16},
+          {w:400, lw:4,   blur:9,  op:0.38},
+          {w:295, lw:2,   blur:2,  op:0.70},
+          {w:235, lw:0.9, blur:0,  op:1.00}
+        ];
+        layers.forEach(function(L,i) {
+          var cv = makeBoltCanvas(L.w, L.lw, L.blur);
+          cv.style.left   = 'calc('+x+'vw - '+Math.round(L.w/2)+'px)';
+          cv.style.zIndex = 14+i;
+          flash(cv, dur+i*14, L.op);
+        });
+      }
+
+      function doLaser() {
+        var x   = rx(), y = ry();
+        var dur = 75 + Math.random() * 120;
+        var ang = (Math.random()*2-1)*80;
+        var len = 280 + Math.random() * 320;
+        var palettes = [
+          ['255,20,20',  '255,90,0'  ],
+          ['155,0,255',  '200,80,255'],
+          ['0,160,255',  '80,220,255']
+        ];
+        var pal = palettes[Math.floor(Math.random()*3)];
+        var c0 = pal[0], c1 = pal[1];
+        var layers = [
+          {h:50, blur:20, op:0.18},
+          {h:26, blur:8,  op:0.40},
+          {h:10, blur:2,  op:0.72},
+          {h:2,  blur:0,  op:1.00}
+        ];
+        layers.forEach(function(L,i) {
+          var el = document.createElement('div');
+          el.style.position      = 'absolute';
+          el.style.pointerEvents = 'none';
+          el.style.left          = x+'vw';
+          el.style.top           = y+'vh';
+          el.style.width         = len+'px';
+          el.style.height        = L.h+'px';
+          el.style.transform     = 'translate(-50%,-50%) rotate('+ang+'deg)';
+          el.style.borderRadius  = '999px';
+          el.style.background    = 'linear-gradient(to right,transparent 0%,rgba('+c0+',0.95) 18%,rgba('+c1+',1) 50%,rgba('+c0+',0.95) 82%,transparent 100%)';
+          el.style.boxShadow     = '0 0 '+(L.h*2)+'px rgba('+c0+',0.9),0 0 '+(L.h*5)+'px rgba('+c0+',0.5)';
+          if(L.blur>0) el.style.filter='blur('+L.blur+'px)';
+          el.style.zIndex = 14+i;
+          flash(el, dur+i*10, L.op);
+        });
+      }
+
+      function doText() {
+        var msg = MSGS[Math.floor(Math.random()*MSGS.length)];
+        var x = rx(), y = ry(), dur = 120+Math.random()*200;
+        var tiers = [
+          {blur:'blur(22px)',op:0.15,mult:1.8},
+          {blur:'blur(10px)',op:0.38,mult:1.4},
+          {blur:'blur(3px)', op:0.70,mult:1.15},
+          {blur:'none',      op:1.00,mult:1.0}
+        ];
+        tiers.forEach(function(T,i) {
+          var el = document.createElement('div');
+          el.style.position='absolute'; el.style.pointerEvents='none';
+          el.style.left=x+'vw'; el.style.top=y+'vh';
+          el.style.transform='translate(-50%,-50%) scale('+T.mult+')';
+          el.style.fontFamily="'Courier New',monospace"; el.style.fontWeight='900';
+          el.style.fontSize=(0.9+T.mult*0.65)+'rem'; el.style.color='#bb0000';
+          el.style.textShadow='0 0 12px #ff0000,0 0 28px #770000,3px 6px 0 #330000';
+          el.style.letterSpacing='0.22em'; el.style.whiteSpace='nowrap';
+          el.style.filter=T.blur; el.style.zIndex=14+i;
+          el.textContent=msg;
+          flash(el, dur+i*18, T.op);
+        });
+      }
+
+      function doPulse() {
+        var dur = 55+Math.random()*65;
+        var bg  = Math.random()<0.5
+          ? 'rgba(155,0,0,'+(0.18+Math.random()*0.22)+')'
+          : 'rgba(80,40,200,'+(0.10+Math.random()*0.14)+')';
+        var el = document.createElement('div');
+        el.style.position='absolute'; el.style.pointerEvents='none';
+        el.style.top='0'; el.style.left='0'; el.style.right='0'; el.style.bottom='0';
+        el.style.background=bg; el.style.zIndex='19';
+        flash(el, dur, 1.0);
+      }
+
+      var TYPES = [doLightning,doLightning,doLightning,doLaser,doLaser,doText,doPulse,doPulse];
+
+      function tick() {
+        var ag = document.getElementById('age-gate');
+        if (!ag || ag.style.display==='none') return;
+        TYPES[Math.floor(Math.random()*TYPES.length)]();
+        if (Math.random()<0.32) {
+          var d1=60+Math.random()*110, d2=d1+70+Math.random()*120;
+          setTimeout(function(){var a=document.getElementById('age-gate');if(a&&a.style.display!=='none')TYPES[Math.floor(Math.random()*TYPES.length)]();},d1);
+          if(Math.random()<0.5)setTimeout(function(){var a=document.getElementById('age-gate');if(a&&a.style.display!=='none')TYPES[Math.floor(Math.random()*TYPES.length)]();},d2);
+        }
+        setTimeout(tick, 260+Math.random()*1600);
+      }
+      setTimeout(tick, 400+Math.random()*800);
+    })();
+
     // ── ZOMBIE BURST (main screen emoji click) ────────────────────────────
     var zombieUrl = null;
     (function() {
