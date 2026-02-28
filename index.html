@@ -2030,30 +2030,27 @@
     }
     animateCursor();
 
-    // ── AGE SCREEN MUSIC ──────────────────────────────────────────────────
+    // ── AGE SCREEN MUSIC + VILLAIN INTRO ─────────────────────────────────
     (function() {
-      var ageAudio  = document.getElementById('age-music');
-      var ageMusBtn = document.getElementById('age-music-btn');
-      var ageMusOn  = false;
-      var interacted = false;
-      ageAudio.volume = 0.55;
+      var ageAudio    = document.getElementById('age-music');
+      var ageMusBtn   = document.getElementById('age-music-btn');
+      var villainIntro = new Audio('villain-intro.mp3');
+      var ageMusOn    = false;
+      var interacted  = false;
+      var introPlayed = false;
+      ageAudio.volume     = 0.7;
+      villainIntro.volume = 0.65;
 
       function startMusic() {
-        var p = ageAudio.play();
-        if (p !== undefined) {
-          p.then(function() {
-            ageMusOn = true;
-            ageMusBtn.classList.remove('muted');
-            ageMusBtn.innerHTML = '&#9834;';
-          }).catch(function() {
-            // browser blocked autoplay — wait for click
-            ageMusOn = false;
-          });
-        } else {
-          ageMusOn = true;
-          ageMusBtn.classList.remove('muted');
-          ageMusBtn.innerHTML = '&#9834;';
+        // start both at the same time
+        ageAudio.play().catch(function(){});
+        if (!introPlayed) {
+          introPlayed = true;
+          villainIntro.play().catch(function(){});
         }
+        ageMusOn = true;
+        ageMusBtn.classList.remove('muted');
+        ageMusBtn.innerHTML = '&#9834;';
       }
 
       function stopMusic() {
@@ -2062,6 +2059,8 @@
         ageMusOn = false;
         ageMusBtn.classList.add('muted');
         ageMusBtn.innerHTML = '&#9835;';
+        villainIntro.pause();
+        villainIntro.currentTime = 0;
       }
 
       // try autoplay immediately
