@@ -847,6 +847,7 @@
       }
       var am = document.getElementById('age-music');
       if (am) { am.pause(); am.currentTime = 0; }
+      if (window._stopThunder) window._stopThunder();
       ageGate.style.display = 'none';
     }
 
@@ -2061,6 +2062,7 @@
         thunder.pause();
         thunder.currentTime = 0;
       }
+      window._stopThunder = stopThunder;
 
       function startMusic() {
         ageAudio.play().catch(function(){});
