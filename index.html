@@ -233,6 +233,33 @@
       transform-origin: center center;
     }
 
+    /* === GRENADE TARGET === */
+    @keyframes grenadePulse {
+      0%,100% { transform: translate(-50%,-50%) scale(1);    filter: drop-shadow(0 0 8px #00ff44) drop-shadow(0 0 20px #006622); }
+      50%     { transform: translate(-50%,-50%) scale(1.10); filter: drop-shadow(0 0 18px #44ff88) drop-shadow(0 0 40px #00aa33); }
+    }
+    @keyframes grenadeExplode {
+      0%   { transform: translate(-50%,-50%) scale(0.1);  opacity: 0; }
+      15%  { opacity: var(--go); }
+      50%  { transform: translate(-50%,-50%) scale(1.1);  opacity: var(--go); }
+      80%  { transform: translate(-50%,-50%) scale(0.95); opacity: var(--go); }
+      100% { transform: translate(-50%,-50%) scale(0.2);  opacity: 0; }
+    }
+    .grenade-target {
+      position: fixed;
+      z-index: 25;
+      cursor: pointer;
+      pointer-events: all;
+      width: 80px; height: 80px;
+    }
+    .grenade-burst {
+      position: fixed;
+      pointer-events: none;
+      z-index: 90;
+      animation: grenadeExplode ease-out forwards;
+      transform-origin: center center;
+    }
+
     #score {
       position: fixed;
       top: 1.5rem;
@@ -1249,6 +1276,7 @@
         var _cx = r.left + r.width/2, _cy = r.top + r.height/2;
         if (Math.random() < 0.5) spawnZombieBurst(_cx, _cy);
         else spawnZombie2Burst(_cx, _cy);
+        if (Math.random() < 0.30) spawnGrenade();
         removeEmoji(el);
       });
 
@@ -2363,6 +2391,73 @@
         document.body.appendChild(img);
         img.addEventListener('animationend', function() { img.remove(); });
       });
+    }
+
+    // ── GRENADE ───────────────────────────────────────────────────────────────
+    var grenadeUrl = null;
+    (function() {
+      var tmp = new Image();
+      tmp.onload = function() {
+        var cv = document.createElement('canvas');
+        cv.width = tmp.naturalWidth; cv.height = tmp.naturalHeight;
+        var ctx = cv.getContext('2d');
+        ctx.drawImage(tmp, 0, 0);
+        var id = ctx.getImageData(0, 0, cv.width, cv.height), px = id.data;
+        for (var i = 0; i < px.length; i += 4) {
+          var r = px[i], g = px[i+1], b = px[i+2];
+          if (r > 185 && g > 185 && b > 185 &&
+              Math.abs(r-g) < 28 && Math.abs(r-b) < 28 && Math.abs(g-b) < 28)
+            px[i+3] = 0;
+        }
+        ctx.putImageData(id, 0, 0);
+        grenadeUrl = cv.toDataURL('image/png');
+      };
+      tmp.src = 'grenade.png';
+    })();
+
+    function spawnGrenade() {
+      if (!grenadeUrl) return;
+      var margin = 90;
+      var gx = margin + Math.random() * (window.innerWidth  - margin * 2);
+      var gy = margin + Math.random() * (window.innerHeight - margin * 2);
+      var wrap = document.createElement('div');
+      wrap.className = 'grenade-target';
+      wrap.style.left = gx + 'px';
+      wrap.style.top  = gy + 'px';
+      // 3 DOF layers: blurry halo → sharp centre
+      [{sz:110,blur:10,op:0.25},{sz:88,blur:3,op:0.55},{sz:70,blur:0,op:1.0}].forEach(function(L) {
+        var img = document.createElement('img');
+        img.src = grenadeUrl;
+        img.style.cssText = 'position:absolute;width:'+L.sz+'px;height:auto;left:50%;top:50%;transform:translate(-50%,-50%);opacity:'+L.op+';pointer-events:none;';
+        if (L.blur) img.style.filter = 'blur('+L.blur+'px)';
+        wrap.appendChild(img);
+      });
+      // pulse glow on sharp layer (last child)
+      wrap.lastChild.style.animation = 'grenadePulse 1.1s ease-in-out infinite';
+      document.body.appendChild(wrap);
+      var done = false;
+      wrap.addEventListener('click', function(e) {
+        if (done) return; done = true;
+        score += 100;
+        scoreEl.textContent = 'SCORE: ' + score;
+        showPointFlash(e.clientX, e.clientY, '+100!');
+        // DOF explosion burst
+        [{sz:400,blur:28,op:0.15,dur:0.55},{sz:300,blur:14,op:0.38,dur:0.65},
+         {sz:220,blur:4, op:0.75,dur:0.75},{sz:175,blur:0, op:1.00,dur:0.85}].forEach(function(L) {
+          var img = document.createElement('img');
+          img.className = 'grenade-burst';
+          img.src = grenadeUrl;
+          img.style.setProperty('--go', L.op);
+          img.style.left = e.clientX+'px'; img.style.top = e.clientY+'px';
+          img.style.width = L.sz+'px'; img.style.height = 'auto';
+          if (L.blur) img.style.filter = 'blur('+L.blur+'px)';
+          img.style.animationDuration = L.dur+'s';
+          document.body.appendChild(img);
+          img.addEventListener('animationend', function() { img.remove(); });
+        });
+        wrap.remove();
+      });
+      setTimeout(function() { if (!done) { done = true; wrap.remove(); } }, 5000);
     }
 
     function spawnZombieBurst(cx, cy) {
