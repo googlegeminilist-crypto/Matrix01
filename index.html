@@ -1246,7 +1246,9 @@
         checkRace();
         maybeShowHorrorText();
         var r = el.getBoundingClientRect();
-        spawnZombieBurst(r.left + r.width / 2, r.top + r.height / 2);
+        var _cx = r.left + r.width/2, _cy = r.top + r.height/2;
+        if (Math.random() < 0.5) spawnZombieBurst(_cx, _cy);
+        else spawnZombie2Burst(_cx, _cy);
         removeEmoji(el);
       });
 
@@ -2319,6 +2321,49 @@
       };
       tmp.src = 'zombie.png';
     })();
+
+    var zombie2Url = null;
+    (function() {
+      var tmp = new Image();
+      tmp.onload = function() {
+        var cv = document.createElement('canvas');
+        cv.width = tmp.naturalWidth; cv.height = tmp.naturalHeight;
+        var ctx = cv.getContext('2d');
+        ctx.drawImage(tmp, 0, 0);
+        var id = ctx.getImageData(0, 0, cv.width, cv.height), px = id.data;
+        for (var i = 0; i < px.length; i += 4) {
+          var r = px[i], g = px[i+1], b = px[i+2];
+          if (r > 185 && g > 185 && b > 185 &&
+              Math.abs(r-g) < 28 && Math.abs(r-b) < 28 && Math.abs(g-b) < 28)
+            px[i+3] = 0;
+        }
+        ctx.putImageData(id, 0, 0);
+        zombie2Url = cv.toDataURL('image/png');
+      };
+      tmp.src = 'zombie2.png';
+    })();
+
+    function spawnZombie2Burst(cx, cy) {
+      if (!zombie2Url) return;
+      var layers = [
+        { sz: 320, blur: 22,  op: 0.18, dur: 0.65 },
+        { sz: 255, blur: 10,  op: 0.42, dur: 0.73 },
+        { sz: 200, blur: 3,   op: 0.78, dur: 0.80 },
+        { sz: 165, blur: 0,   op: 1.00, dur: 0.88 }
+      ];
+      layers.forEach(function(L) {
+        var img = document.createElement('img');
+        img.className = 'zombie-burst';
+        img.src = zombie2Url;
+        img.style.setProperty('--zo', L.op);
+        img.style.left = cx + 'px'; img.style.top = cy + 'px';
+        img.style.width = L.sz + 'px'; img.style.height = 'auto';
+        if (L.blur > 0) img.style.filter = 'blur(' + L.blur + 'px)';
+        img.style.animationDuration = L.dur + 's';
+        document.body.appendChild(img);
+        img.addEventListener('animationend', function() { img.remove(); });
+      });
+    }
 
     function spawnZombieBurst(cx, cy) {
       if (!zombieUrl) return;
