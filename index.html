@@ -2415,6 +2415,27 @@
       tmp.src = 'grenade.png';
     })();
 
+    var explosionUrl = null;
+    (function() {
+      var tmp = new Image();
+      tmp.onload = function() {
+        var cv = document.createElement('canvas');
+        cv.width = tmp.naturalWidth; cv.height = tmp.naturalHeight;
+        var ctx = cv.getContext('2d');
+        ctx.drawImage(tmp, 0, 0);
+        var id = ctx.getImageData(0, 0, cv.width, cv.height), px = id.data;
+        for (var i = 0; i < px.length; i += 4) {
+          var r = px[i], g = px[i+1], b = px[i+2];
+          if (r > 210 && g > 210 && b > 210 &&
+              Math.abs(r-g) < 20 && Math.abs(r-b) < 20 && Math.abs(g-b) < 20)
+            px[i+3] = 0;
+        }
+        ctx.putImageData(id, 0, 0);
+        explosionUrl = cv.toDataURL('image/png');
+      };
+      tmp.src = 'explosion.png';
+    })();
+
     function spawnGrenade() {
       if (!grenadeUrl) return;
       var margin = 90;
@@ -2442,11 +2463,11 @@
         scoreEl.textContent = 'SCORE: ' + score;
         showPointFlash(e.clientX, e.clientY, '+100!');
         // DOF explosion burst
-        [{sz:400,blur:28,op:0.15,dur:0.55},{sz:300,blur:14,op:0.38,dur:0.65},
-         {sz:220,blur:4, op:0.75,dur:0.75},{sz:175,blur:0, op:1.00,dur:0.85}].forEach(function(L) {
+        [{sz:520,blur:32,op:0.20,dur:0.60},{sz:400,blur:16,op:0.45,dur:0.72},
+         {sz:290,blur:5, op:0.80,dur:0.84},{sz:230,blur:0, op:1.00,dur:0.95}].forEach(function(L) {
           var img = document.createElement('img');
           img.className = 'grenade-burst';
-          img.src = grenadeUrl;
+          img.src = explosionUrl || grenadeUrl;
           img.style.setProperty('--go', L.op);
           img.style.left = e.clientX+'px'; img.style.top = e.clientY+'px';
           img.style.width = L.sz+'px'; img.style.height = 'auto';
