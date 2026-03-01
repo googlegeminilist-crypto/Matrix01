@@ -2072,23 +2072,30 @@
       var introPlayed = false;
       var thunderOn   = false;
       var thunderGapTimer = null;
-      var scream = new Audio('a-whoa-female-scream-soun-wwpmi5wq.wav');
-      scream.volume = 0.85;
+      var scream    = new Audio('a-whoa-female-scream-soun-wwpmi5wq.wav');
+      var narrator  = new Audio('ElevenLabs_2026-03-01T21_40_40_Ezekiel \u2013 raspy narrator_pvc_sp77_s40_sb75_se50_b_m2.mp3');
+      scream.volume   = 0.85;
+      narrator.volume = 0.90;
       ageAudio.volume     = 0.75;
       villainIntro.volume = 0.80;
       thunder.volume      = 0.30;
       thunder.preload     = 'auto';
-      // gap between thunder strikes — scream plays in the silence
+      // gap between thunder strikes: narrator → scream → thunder again
       thunder.addEventListener('ended', function() {
         if (!thunderOn) return;
-        scream.currentTime = 0;
-        scream.play().catch(function(){});
-        thunderGapTimer = setTimeout(function() {
+        narrator.currentTime = 0;
+        narrator.play().catch(function(){});
+        narrator.onended = function() {
           if (!thunderOn) return;
-          scream.pause(); scream.currentTime = 0;
-          thunder.currentTime = 0;
-          thunder.play().catch(function(){});
-        }, 4000 + Math.random() * 5000);
+          scream.currentTime = 0;
+          scream.play().catch(function(){});
+          thunderGapTimer = setTimeout(function() {
+            if (!thunderOn) return;
+            scream.pause(); scream.currentTime = 0;
+            thunder.currentTime = 0;
+            thunder.play().catch(function(){});
+          }, 3000 + Math.random() * 4000);
+        };
       });
 
       function startThunder() {
@@ -2099,6 +2106,7 @@
       function stopThunder() {
         thunderOn = false;
         thunder.pause(); thunder.currentTime = 0;
+        narrator.pause(); narrator.currentTime = 0; narrator.onended = null;
         scream.pause(); scream.currentTime = 0;
         if (thunderGapTimer) { clearTimeout(thunderGapTimer); thunderGapTimer = null; }
       }
