@@ -2071,15 +2071,24 @@
       var interacted  = false;
       var introPlayed = false;
       var thunderOn   = false;
+      var thunderGapTimer = null;
+      var scream = new Audio('a-whoa-female-scream-soun-wwpmi5wq.wav');
+      scream.volume = 0.85;
       ageAudio.volume     = 0.75;
       villainIntro.volume = 0.80;
       thunder.volume      = 0.30;
       thunder.preload     = 'auto';
-      // ended fires reliably when loop is NOT set — restart manually
+      // gap between thunder strikes — scream plays in the silence
       thunder.addEventListener('ended', function() {
         if (!thunderOn) return;
-        thunder.currentTime = 0;
-        thunder.play().catch(function(){});
+        scream.currentTime = 0;
+        scream.play().catch(function(){});
+        thunderGapTimer = setTimeout(function() {
+          if (!thunderOn) return;
+          scream.pause(); scream.currentTime = 0;
+          thunder.currentTime = 0;
+          thunder.play().catch(function(){});
+        }, 4000 + Math.random() * 5000);
       });
 
       function startThunder() {
@@ -2089,8 +2098,9 @@
       }
       function stopThunder() {
         thunderOn = false;
-        thunder.pause();
-        thunder.currentTime = 0;
+        thunder.pause(); thunder.currentTime = 0;
+        scream.pause(); scream.currentTime = 0;
+        if (thunderGapTimer) { clearTimeout(thunderGapTimer); thunderGapTimer = null; }
       }
       window._stopThunder = stopThunder;
 
