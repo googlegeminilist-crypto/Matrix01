@@ -2459,9 +2459,9 @@
       var done = false;
       wrap.addEventListener('click', function(e) {
         if (done) return; done = true;
-        score += 100;
+        score += 50;
         scoreEl.textContent = 'SCORE: ' + score;
-        showPointFlash(e.clientX, e.clientY, '+100!');
+        showPointFlash(e.clientX, e.clientY, '+50!');
         // DOF explosion burst
         [{sz:520,blur:32,op:0.20,dur:0.60},{sz:400,blur:16,op:0.45,dur:0.72},
          {sz:290,blur:5, op:0.80,dur:0.84},{sz:230,blur:0, op:1.00,dur:0.95}].forEach(function(L) {
