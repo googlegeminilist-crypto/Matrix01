@@ -691,6 +691,65 @@ struct AgeGateView: View {
 
 }
 
+// MARK: - Grenade DOF view (matches HTML: 3 layers + grenadePulse glow)
+
+struct GrenadeDOFView: View {
+    @State private var pulse = false
+
+    // Remove near-white background pixels once at load time — mirrors HTML canvas approach:
+    // r>185 && g>185 && b>185 with r≈g≈b (within 28) → alpha = 0
+    private static let image: Image = {
+        guard let ui = UIImage(named: "grenade"), let cg = ui.cgImage else {
+            return Image("grenade")
+        }
+        let w = cg.width, h = cg.height
+        let cs = CGColorSpaceCreateDeviceRGB()
+        guard let ctx = CGContext(
+            data: nil, width: w, height: h,
+            bitsPerComponent: 8, bytesPerRow: w * 4, space: cs,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else { return Image("grenade") }
+        ctx.draw(cg, in: CGRect(x: 0, y: 0, width: w, height: h))
+        guard let raw = ctx.data else { return Image("grenade") }
+        let px = raw.bindMemory(to: UInt8.self, capacity: w * h * 4)
+        for i in 0 ..< w * h {
+            let o = i * 4
+            let r = px[o], g = px[o+1], b = px[o+2]
+            if r > 185 && g > 185 && b > 185
+                && abs(Int(r)-Int(g)) < 28
+                && abs(Int(r)-Int(b)) < 28
+                && abs(Int(g)-Int(b)) < 28 {
+                px[o] = 0; px[o+1] = 0; px[o+2] = 0; px[o+3] = 0
+            }
+        }
+        guard let out = ctx.makeImage() else { return Image("grenade") }
+        return Image(uiImage: UIImage(cgImage: out))
+    }()
+
+    var body: some View {
+        ZStack {
+            Self.image.resizable().scaledToFit()
+                .frame(width: 110, height: 110)
+                .blur(radius: 10).opacity(0.25)
+                .allowsHitTesting(false)
+            Self.image.resizable().scaledToFit()
+                .frame(width: 88, height: 88)
+                .blur(radius: 3).opacity(0.55)
+                .allowsHitTesting(false)
+            Self.image.resizable().scaledToFit()
+                .frame(width: 70, height: 70)
+                .shadow(color: Color(red: 0, green: 1,    blue: 0.27), radius: pulse ? 18 : 8)
+                .shadow(color: Color(red: 0, green: 0.40, blue: 0.13), radius: pulse ? 40 : 20)
+                .scaleEffect(pulse ? 1.10 : 1.0)
+        }
+        .onAppear {
+            withAnimation(.easeInOut(duration: 1.1).repeatForever(autoreverses: true)) {
+                pulse = true
+            }
+        }
+    }
+}
+
 // MARK: - Main Game
 
 struct MainGameView: View {
@@ -895,14 +954,9 @@ struct MainGameView: View {
 
                 // ── Grenades ─────────────────────────────────────────────
                 ForEach(game.grenades) { g in
-                    ZStack {
-                        Text("💣").font(.system(size: 54)).blur(radius: 12).opacity(0.25)
-                        Text("💣").font(.system(size: 40)).blur(radius:  4).opacity(0.55)
-                        Text("💣").font(.system(size: 32))
-                            .shadow(color: Color(red:0,green:1,blue:0.27), radius: 18)
-                    }
-                    .position(g.pos)
-                    .onTapGesture { tappedGrenade(g) }
+                    GrenadeDOFView()
+                        .position(g.pos)
+                        .onTapGesture { tappedGrenade(g) }
                 }
 
                 // ── Bombs ────────────────────────────────────────────────
