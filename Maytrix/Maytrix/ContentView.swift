@@ -349,11 +349,11 @@ struct AgeGateView: View {
     let onEnter: () -> Void
     @EnvironmentObject private var audio: AudioManager
 
-    @State private var ageText      = ""
-    @State private var errorMsg     = ""
-    @State private var lightning    = false
-    @State private var lightningColor = Color.white
-    @State private var horrorMsg: String? = nil
+    @State private var ageText       = ""
+    @State private var errorMsg      = ""
+    @State private var boltPath:     [(CGPoint, CGPoint)] = []
+    @State private var boltOpacity:  Double  = 0
+    @State private var skullBreath:  CGFloat = 0
     @State private var drips: [AgeDrip] = []
 
     private let warningLines = [
@@ -367,7 +367,6 @@ struct AgeGateView: View {
         "This is just a warning", "to all who dare enter.",
         "You have been warned.", "You enter at your own risk."
     ]
-    private let horrorMessages = ["GET OUT", "RUN", "LEAVE NOW", "TURN BACK", "DON'T ENTER", "YOU'LL REGRET THIS"]
 
     var body: some View {
         GeometryReader { geo in
@@ -397,10 +396,43 @@ struct AgeGateView: View {
                 }
                 .ignoresSafeArea()
 
-                // Lightning flash
-                if lightning {
-                    lightningColor.opacity(0.13).ignoresSafeArea()
+                // Lightning bolt — 4 DOF layers matching HTML (widest/blurriest → sharp)
+                ZStack {
+                    Canvas { ctx, _ in
+                        var p = Path()
+                        for (a, b) in boltPath { p.move(to: a); p.addLine(to: b) }
+                        ctx.stroke(p, with: .color(.white),
+                                   style: StrokeStyle(lineWidth: 8, lineCap: .round))
+                    }
+                    .blur(radius: 22).opacity(0.16 * boltOpacity)
+
+                    Canvas { ctx, _ in
+                        var p = Path()
+                        for (a, b) in boltPath { p.move(to: a); p.addLine(to: b) }
+                        ctx.stroke(p, with: .color(Color(red: 0.82, green: 0.65, blue: 1)),
+                                   style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                    }
+                    .blur(radius: 9).opacity(0.38 * boltOpacity)
+
+                    Canvas { ctx, _ in
+                        var p = Path()
+                        for (a, b) in boltPath { p.move(to: a); p.addLine(to: b) }
+                        ctx.stroke(p, with: .color(Color(red: 0.90, green: 0.80, blue: 1)),
+                                   style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                    }
+                    .blur(radius: 2).opacity(0.70 * boltOpacity)
+
+                    Canvas { ctx, _ in
+                        var p = Path()
+                        for (a, b) in boltPath { p.move(to: a); p.addLine(to: b) }
+                        ctx.stroke(p, with: .color(Color(red: 0.97, green: 0.94, blue: 1)),
+                                   style: StrokeStyle(lineWidth: 0.9, lineCap: .round))
+                    }
+                    .opacity(boltOpacity)
                 }
+                .ignoresSafeArea()
+                .allowsHitTesting(false)
+                .blendMode(.screen)
 
                 // Vignette
                 RadialGradient(
@@ -417,16 +449,6 @@ struct AgeGateView: View {
                         .frame(width: geo.size.width * 0.52)
                     skullPanel(geo: geo)
                         .frame(width: geo.size.width * 0.48)
-                }
-
-                // Horror message flash
-                if let msg = horrorMsg {
-                    Text(msg)
-                        .font(.custom("Courier New", size: 34).bold())
-                        .foregroundColor(Color(red: 0.95, green: 0, blue: 0))
-                        .shadow(color: Color(red: 1, green: 0, blue: 0).opacity(0.9), radius: 18)
-                        .multilineTextAlignment(.center)
-                        .transition(.opacity)
                 }
 
                 // Music toggle — top right
@@ -457,8 +479,11 @@ struct AgeGateView: View {
         }
         .onAppear {
             scheduleLightning()
-            scheduleHorror()
             spawnInitialDrips()
+            // skullPush: scale 1.0→1.14, opacity 0.82→1.0, period 5 s
+            withAnimation(.easeInOut(duration: 5).repeatForever(autoreverses: true)) {
+                skullBreath = 1
+            }
         }
     }
 
@@ -528,45 +553,80 @@ struct AgeGateView: View {
 
     @ViewBuilder
     private func skullPanel(geo: GeometryProxy) -> some View {
-        let skullW = min(geo.size.width * 0.42, 155)
-        VStack(spacing: 6) {
-            Spacer().frame(height: geo.size.height * 0.07)
+        let panelW: CGFloat = geo.size.width * 0.48
+        let skullW: CGFloat = panelW          // sharp base fills the panel
+        let dof1W:  CGFloat = panelW * 1.10  // DOF1 overflows panel slightly
+        let dof2W:  CGFloat = panelW * 1.20  // DOF2 wider for visible halo
 
-            // Skull with DOF layers
+        VStack(spacing: 4) {
+            Spacer().frame(height: geo.size.height * 0.03)
+
             ZStack {
-                // Outermost glow
-                Image("skull")
-                    .resizable().scaledToFit()
-                    .frame(width: skullW * 1.12)
-                    .opacity(0.12).blur(radius: 18)
-                // Far blur
-                Image("skull")
-                    .resizable().scaledToFit()
-                    .frame(width: skullW * 1.05)
-                    .opacity(0.25).blur(radius: 9)
-                // Mid blur
-                Image("skull")
-                    .resizable().scaledToFit()
-                    .frame(width: skullW * 1.01)
-                    .opacity(0.48).blur(radius: 3.5)
-                // Sharp front
+                // Base layer — sharp, full panel width, breathing
                 Image("skull")
                     .resizable().scaledToFit()
                     .frame(width: skullW)
-                    .opacity(0.90)
+                    .opacity(0.88 + 0.12 * skullBreath)
+                    .scaleEffect(1.0 + 0.08 * skullBreath)
+                    .contrast(1.15)
+                    .brightness(0.04)
 
-                // Purple eye glow overlay
-                VStack {
-                    HStack(spacing: skullW * 0.16) {
-                        eyeGlow(radius: skullW * 0.09)
-                        eyeGlow(radius: skullW * 0.09)
+                // DOF layer 1 — 8 px blur, ring-masked (clear centre 0–30 %, halo 30–80 %)
+                Image("skull")
+                    .resizable().scaledToFit()
+                    .frame(width: dof1W)
+                    .blur(radius: 8)
+                    .opacity((0.88 + 0.12 * skullBreath) * 0.70)
+                    .scaleEffect(1.0 + 0.08 * skullBreath)
+                    .mask {
+                        RadialGradient(
+                            gradient: Gradient(stops: [
+                                .init(color: .clear,               location: 0.00),
+                                .init(color: .clear,               location: 0.30),
+                                .init(color: .black.opacity(0.55), location: 0.52),
+                                .init(color: .black.opacity(0.90), location: 0.70),
+                                .init(color: .black,               location: 0.82),
+                            ]),
+                            center: UnitPoint(x: 0.5, y: 0.40),
+                            startRadius: 0,
+                            endRadius: dof1W * 0.50
+                        )
                     }
-                    .offset(y: skullW * 0.02)
-                    Spacer()
-                }
-                .frame(width: skullW, height: skullW)
+
+                // DOF layer 2 — 22 px blur, tight ring-mask (clear 0–14 %, halo 14–65 %)
+                Image("skull")
+                    .resizable().scaledToFit()
+                    .frame(width: dof2W)
+                    .blur(radius: 22)
+                    .opacity((0.88 + 0.12 * skullBreath) * 0.50)
+                    .scaleEffect(1.0 + 0.08 * skullBreath)
+                    .mask {
+                        RadialGradient(
+                            gradient: Gradient(stops: [
+                                .init(color: .clear,               location: 0.00),
+                                .init(color: .clear,               location: 0.14),
+                                .init(color: .black.opacity(0.35), location: 0.30),
+                                .init(color: .black.opacity(0.80), location: 0.50),
+                                .init(color: .black,               location: 0.65),
+                            ]),
+                            center: UnitPoint(x: 0.5, y: 0.40),
+                            startRadius: 0,
+                            endRadius: dof2W * 0.46
+                        )
+                    }
+
+                // Subtle edge fade — just darkens the extreme corners, not the skull face
+                RadialGradient(
+                    colors: [.clear, Color.black.opacity(0.55)],
+                    center: UnitPoint(x: 0.5, y: 0.40),
+                    startRadius: panelW * 0.50,
+                    endRadius: panelW * 0.90
+                )
+                .frame(width: panelW * 1.20, height: panelW * 1.40)
+                .allowsHitTesting(false)
             }
-            .frame(height: geo.size.height * 0.32)
+            .frame(width: panelW, height: geo.size.height * 0.52)
+            .clipped()
 
             // 3D blood warning text
             ScrollView(showsIndicators: false) {
@@ -579,27 +639,11 @@ struct AgeGateView: View {
                 .padding(.horizontal, 6)
                 .padding(.bottom, 16)
             }
-            .frame(maxHeight: geo.size.height * 0.46)
+            .frame(maxHeight: geo.size.height * 0.38)
 
             Spacer()
         }
         .padding(.trailing, 8)
-    }
-
-    private func eyeGlow(radius: CGFloat) -> some View {
-        ZStack {
-            Circle()
-                .fill(RadialGradient(
-                    colors: [Color(red: 0.65, green: 0, blue: 1).opacity(0.65), .clear],
-                    center: .center,
-                    startRadius: 0,
-                    endRadius: radius * 2.2
-                ))
-                .frame(width: radius * 4.5, height: radius * 4.5)
-            Circle()
-                .fill(Color(red: 0.8, green: 0.35, blue: 1).opacity(0.45))
-                .frame(width: radius, height: radius)
-        }
     }
 
     private func warningTextLayer(dx: CGFloat, dy: CGFloat, blur: CGFloat, opacity: Double) -> some View {
@@ -660,26 +704,68 @@ struct AgeGateView: View {
         }
     }
 
+    // MARK: - Lightning bolt (midpoint-displacement, 4 DOF layers matching HTML)
+
     private func scheduleLightning() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + Double.random(in: 0.4...2.8)) {
-            lightningColor = [Color.white, Color.purple, Color(red: 0.55, green: 0.8, blue: 1)].randomElement()!
-            withAnimation(.easeOut(duration: 0.06)) { lightning = true }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                withAnimation(.easeIn(duration: 0.14)) { lightning = false }
+        DispatchQueue.main.asyncAfter(deadline: .now() + Double.random(in: 0.4...2.4)) {
+            boltPath = generateBolt()
+            withAnimation(.easeOut(duration: 0.06)) { boltOpacity = 1.0 }
+            let hold = Double.random(in: 0.09...0.22)
+            DispatchQueue.main.asyncAfter(deadline: .now() + hold) {
+                withAnimation(.easeIn(duration: 0.18)) { boltOpacity = 0.0 }
+            }
+            // Occasional double-flash (matching HTML's 32 % re-strike chance)
+            if Bool.random() {
+                let d1 = hold + Double.random(in: 0.06...0.12)
+                DispatchQueue.main.asyncAfter(deadline: .now() + d1) {
+                    boltPath = generateBolt()
+                    withAnimation(.easeOut(duration: 0.04)) { boltOpacity = 0.75 }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + Double.random(in: 0.07...0.12)) {
+                        withAnimation(.easeIn(duration: 0.15)) { boltOpacity = 0.0 }
+                    }
+                }
             }
             scheduleLightning()
         }
     }
 
-    private func scheduleHorror() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + Double.random(in: 5...13)) {
-            withAnimation(.easeIn(duration: 0.1)) { horrorMsg = horrorMessages.randomElement() }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) {
-                withAnimation(.easeOut(duration: 0.35)) { horrorMsg = nil }
-            }
-            scheduleHorror()
+    /// Generates a top-to-bottom lightning bolt using midpoint displacement
+    /// x position: 42 %–94 % of screen width (matching HTML rx() = 42+rand*52 vw)
+    private func generateBolt() -> [(CGPoint, CGPoint)] {
+        let bounds = UIScreen.main.bounds
+        let w = bounds.width, h = bounds.height
+        let cx = CGFloat.random(in: 0.42...0.94) * w
+        let sx = cx + CGFloat.random(in: -w * 0.05...w * 0.05)
+        let ex = cx + CGFloat.random(in: -w * 0.14...w * 0.14)
+        var segs: [(CGPoint, CGPoint)] = []
+        boltSegments(sx, -10, ex, h + 10, r: 0.26, depth: 5, out: &segs)
+        return segs
+    }
+
+    /// Recursive midpoint-displacement: matches JS boltSegs(x1,y1,x2,y2,r,d,out)
+    private func boltSegments(_ x1: CGFloat, _ y1: CGFloat,
+                               _ x2: CGFloat, _ y2: CGFloat,
+                               r: CGFloat, depth: Int,
+                               out: inout [(CGPoint, CGPoint)]) {
+        guard depth > 0 else {
+            out.append((CGPoint(x: x1, y: y1), CGPoint(x: x2, y: y2)))
+            return
+        }
+        let len = max(1, hypot(x2 - x1, y2 - y1))
+        let nx  = -(y2 - y1) / len
+        let ny  =  (x2 - x1) / len
+        let mx  = (x1 + x2) / 2 + nx * CGFloat.random(in: -1...1) * r * len
+        let my  = (y1 + y2) / 2 + ny * CGFloat.random(in: -1...1) * r * len
+        boltSegments(x1, y1, mx, my, r: r * 0.62, depth: depth - 1, out: &out)
+        boltSegments(mx, my, x2, y2, r: r * 0.62, depth: depth - 1, out: &out)
+        // Branch (depth ≥ 3, 50 % chance) — matching HTML's forked lightning
+        if depth >= 3, CGFloat.random(in: 0...1) < 0.5 {
+            let bx = mx + CGFloat.random(in: -55...55)
+            let by = my + 20 + CGFloat.random(in: 0...55)
+            boltSegments(mx, my, bx, by, r: r * 0.55, depth: depth - 2, out: &out)
         }
     }
+
 }
 
 // MARK: - Main Game
