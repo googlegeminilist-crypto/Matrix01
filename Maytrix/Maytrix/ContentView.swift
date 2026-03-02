@@ -561,6 +561,9 @@ struct AgeGateView: View {
         VStack(spacing: 4) {
             Spacer().frame(height: geo.size.height * 0.03)
 
+            // .screen on the ZStack composites the whole skull against the black page —
+            // every dark/near-black pixel in skull.png becomes transparent, so no
+            // rectangle is visible. Individual layers render normally with each other.
             ZStack {
                 // Base layer — sharp, full panel width, breathing
                 Image("skull")
@@ -614,19 +617,9 @@ struct AgeGateView: View {
                             endRadius: dof2W * 0.46
                         )
                     }
-
-                // Subtle edge fade — just darkens the extreme corners, not the skull face
-                RadialGradient(
-                    colors: [.clear, Color.black.opacity(0.55)],
-                    center: UnitPoint(x: 0.5, y: 0.40),
-                    startRadius: panelW * 0.50,
-                    endRadius: panelW * 0.90
-                )
-                .frame(width: panelW * 1.20, height: panelW * 1.40)
-                .allowsHitTesting(false)
             }
+            .blendMode(.screen)
             .frame(width: panelW, height: geo.size.height * 0.52)
-            .clipped()
 
             // 3D blood warning text
             ScrollView(showsIndicators: false) {
