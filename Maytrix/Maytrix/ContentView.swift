@@ -35,7 +35,7 @@ final class AudioManager: ObservableObject {
         // Search bundle by full filename to handle special characters
         bgPlayer         = load("Untitled 4.mp3")
         ageMusicPlayer   = load("age-music.mp3")
-        villainPlayer    = load("villain-intro.mp3")
+        villainPlayer    = load("ElevenLabs_2026-03-02T19_38_02_The Villin Of The Story _gen_sp100_s50_sb75_se0_b_m2.mp3")
         thunderPlayer    = load("thunder.mp3")
         narratorPlayer   = load("ElevenLabs_2026-03-01T21_40_40_Ezekiel \u{2013} raspy narrator_pvc_sp77_s40_sb75_se50_b_m2.mp3")
         screamPlayer     = load("a-whoa-female-scream-soun-wwpmi5wq.wav")
@@ -70,25 +70,38 @@ final class AudioManager: ObservableObject {
     // MARK: Age gate audio
     func startAgeMusic() {
         ageMusicPlayer?.play()
-        if !introPlayed { introPlayed = true; villainPlayer?.play() }
-        startThunder()
+        if !introPlayed { introPlayed = true; villainPlayer?.play(); pollVillainEnded() }
         ageMusicOn = true
     }
 
     func stopAgeMusic() {
         ageMusicPlayer?.pause(); ageMusicPlayer?.currentTime = 0
         villainPlayer?.pause();  villainPlayer?.currentTime  = 0
+        narratorPlayer?.stop();  narratorPlayer?.currentTime = 0
         stopThunder()
         ageMusicOn = false
     }
 
+    // After villain-intro ends → thunder + scream fire simultaneously
+    private func pollVillainEnded() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+            guard let self, self.ageMusicOn else { return }
+            if !(self.villainPlayer?.isPlaying ?? false) {
+                self.startThunder()
+            } else {
+                self.pollVillainEnded()
+            }
+        }
+    }
+
     func toggleAgeMusic() { ageMusicOn ? stopAgeMusic() : startAgeMusic() }
 
-    // MARK: Thunder loop  (thunder → narrator → scream → gap → thunder …)
+    // MARK: Thunder loop  (thunder+scream → narrator → gap → thunder+scream …)
+    // Thunder and scream always fire together.
     private func startThunder() {
         thunderOn = true
-        thunderPlayer?.currentTime = 0
-        thunderPlayer?.play()
+        thunderPlayer?.currentTime = 0; thunderPlayer?.play()
+        screamPlayer?.currentTime  = 0; screamPlayer?.play()
         pollThunder()
     }
 
@@ -114,12 +127,9 @@ final class AudioManager: ObservableObject {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
             guard let self, self.thunderOn else { return }
             if !(self.narratorPlayer?.isPlaying ?? false) {
-                self.screamPlayer?.currentTime = 0; self.screamPlayer?.play()
                 let task = DispatchWorkItem { [weak self] in
                     guard let self, self.thunderOn else { return }
-                    self.screamPlayer?.stop()
-                    self.thunderPlayer?.currentTime = 0; self.thunderPlayer?.play()
-                    self.pollThunder()
+                    self.startThunder()   // restarts thunder + scream together
                 }
                 self.thunderGapTask = task
                 DispatchQueue.main.asyncAfter(deadline: .now() + Double.random(in: 3...7), execute: task)
@@ -128,7 +138,7 @@ final class AudioManager: ObservableObject {
     }
 
     // MARK: Main game audio
-    func enterGame() { stopAgeMusic(); startBgMusic() }
+    func enterGame() { stopAgeMusic(); startBgMusic(); startThunder() }
 
     func startBgMusic() { bgPlayer?.currentTime = 0; bgPlayer?.play(); bgMusicOn = true }
     func stopBgMusic()  { bgPlayer?.pause(); bgMusicOn = false }
