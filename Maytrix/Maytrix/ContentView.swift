@@ -434,20 +434,21 @@ struct AgeGateView: View {
                 .allowsHitTesting(false)
                 .blendMode(.screen)
 
-                // Vignette
-                RadialGradient(
-                    colors: [.clear, Color.black.opacity(0.65)],
-                    center: .center,
-                    startRadius: geo.size.width * 0.28,
-                    endRadius: geo.size.width * 0.9
-                )
-                .ignoresSafeArea()
+                // ── Single skull — screen blend makes dark bg transparent ──
+                Image("skull")
+                    .resizable().scaledToFit()
+                    .frame(width: geo.size.width * 0.92)
+                    .contrast(1.2).brightness(0.05)
+                    .opacity(0.88 + 0.12 * skullBreath)
+                    .scaleEffect(1.0 + 0.08 * skullBreath)
+                    .blendMode(.screen)
+                    .allowsHitTesting(false)
 
-                // Main side-by-side layout
+                // ── Main layout ───────────────────────────────────────────
                 HStack(alignment: .top, spacing: 0) {
                     formPanel(geo: geo)
                         .frame(width: geo.size.width * 0.52)
-                    skullPanel(geo: geo)
+                    warningPanel(geo: geo)
                         .frame(width: geo.size.width * 0.48)
                 }
 
@@ -480,7 +481,6 @@ struct AgeGateView: View {
         .onAppear {
             scheduleLightning()
             spawnInitialDrips()
-            // skullPush: scale 1.0→1.14, opacity 0.82→1.0, period 5 s
             withAnimation(.easeInOut(duration: 5).repeatForever(autoreverses: true)) {
                 skullBreath = 1
             }
@@ -549,80 +549,13 @@ struct AgeGateView: View {
         .padding(.leading, max(geo.size.width * 0.055, 16))
     }
 
-    // MARK: Skull + warning panel (right)
+    // MARK: Warning text panel (right)
 
     @ViewBuilder
-    private func skullPanel(geo: GeometryProxy) -> some View {
-        let panelW: CGFloat = geo.size.width * 0.48
-        let skullW: CGFloat = panelW          // sharp base fills the panel
-        let dof1W:  CGFloat = panelW * 1.10  // DOF1 overflows panel slightly
-        let dof2W:  CGFloat = panelW * 1.20  // DOF2 wider for visible halo
-
-        VStack(spacing: 4) {
-            Spacer().frame(height: geo.size.height * 0.03)
-
-            // .screen on the ZStack composites the whole skull against the black page —
-            // every dark/near-black pixel in skull.png becomes transparent, so no
-            // rectangle is visible. Individual layers render normally with each other.
-            ZStack {
-                // Base layer — sharp, full panel width, breathing
-                Image("skull")
-                    .resizable().scaledToFit()
-                    .frame(width: skullW)
-                    .opacity(0.88 + 0.12 * skullBreath)
-                    .scaleEffect(1.0 + 0.08 * skullBreath)
-                    .contrast(1.15)
-                    .brightness(0.04)
-
-                // DOF layer 1 — 8 px blur, ring-masked (clear centre 0–30 %, halo 30–80 %)
-                Image("skull")
-                    .resizable().scaledToFit()
-                    .frame(width: dof1W)
-                    .blur(radius: 8)
-                    .opacity((0.88 + 0.12 * skullBreath) * 0.70)
-                    .scaleEffect(1.0 + 0.08 * skullBreath)
-                    .mask {
-                        RadialGradient(
-                            gradient: Gradient(stops: [
-                                .init(color: .clear,               location: 0.00),
-                                .init(color: .clear,               location: 0.30),
-                                .init(color: .black.opacity(0.55), location: 0.52),
-                                .init(color: .black.opacity(0.90), location: 0.70),
-                                .init(color: .black,               location: 0.82),
-                            ]),
-                            center: UnitPoint(x: 0.5, y: 0.40),
-                            startRadius: 0,
-                            endRadius: dof1W * 0.50
-                        )
-                    }
-
-                // DOF layer 2 — 22 px blur, tight ring-mask (clear 0–14 %, halo 14–65 %)
-                Image("skull")
-                    .resizable().scaledToFit()
-                    .frame(width: dof2W)
-                    .blur(radius: 22)
-                    .opacity((0.88 + 0.12 * skullBreath) * 0.50)
-                    .scaleEffect(1.0 + 0.08 * skullBreath)
-                    .mask {
-                        RadialGradient(
-                            gradient: Gradient(stops: [
-                                .init(color: .clear,               location: 0.00),
-                                .init(color: .clear,               location: 0.14),
-                                .init(color: .black.opacity(0.35), location: 0.30),
-                                .init(color: .black.opacity(0.80), location: 0.50),
-                                .init(color: .black,               location: 0.65),
-                            ]),
-                            center: UnitPoint(x: 0.5, y: 0.40),
-                            startRadius: 0,
-                            endRadius: dof2W * 0.46
-                        )
-                    }
-            }
-            .blendMode(.screen)
-            .frame(width: panelW, height: geo.size.height * 0.52)
-
-            // 3D blood warning text
-            ScrollView(showsIndicators: false) {
+    private func warningPanel(geo: GeometryProxy) -> some View {
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 0) {
+                Spacer().frame(height: geo.size.height * 0.12)
                 ZStack(alignment: .topLeading) {
                     warningTextLayer(dx: 3, dy: 3, blur: 7,   opacity: 0.18)
                     warningTextLayer(dx: 2, dy: 2, blur: 3.5, opacity: 0.32)
@@ -632,9 +565,6 @@ struct AgeGateView: View {
                 .padding(.horizontal, 6)
                 .padding(.bottom, 16)
             }
-            .frame(maxHeight: geo.size.height * 0.38)
-
-            Spacer()
         }
         .padding(.trailing, 8)
     }
@@ -767,8 +697,9 @@ struct MainGameView: View {
     @StateObject private var rain = MatrixRain()
     @StateObject private var game = GameState()
     @EnvironmentObject private var audio: AudioManager
-    @State private var now        = Date()
-    @State private var screenSize = CGSize.zero
+    @State private var now          = Date()
+    @State private var screenSize   = CGSize.zero
+    @State private var skullBreath: CGFloat = 0
 
     private let gameTick  = Timer.publish(every: 1/30, on: .main, in: .common).autoconnect()
     private let emojiTick = Timer.publish(every: 0.70, on: .main, in: .common).autoconnect()
@@ -814,6 +745,40 @@ struct MainGameView: View {
                     }
                 }
                 .blendMode(.screen)
+
+                // ── cool dool DOF background ──────────────────────────────
+                // Base: full-screen, luminosity blend on black
+                Image("cooldool")
+                    .resizable().scaledToFill()
+                    .frame(width: geo.size.width, height: geo.size.height)
+                    .clipped()
+                    .opacity(0.65)
+                    .blendMode(.luminosity)
+                    .allowsHitTesting(false)
+                // DOF layer: blurred edge halo, breathing, ring-masked
+                Image("cooldool")
+                    .resizable().scaledToFill()
+                    .frame(width: geo.size.width, height: geo.size.height)
+                    .blur(radius: 14)
+                    .brightness(0.08)
+                    .saturation(1.2)
+                    .opacity(0.50 + 0.22 * skullBreath)
+                    .blendMode(.luminosity)
+                    .mask {
+                        RadialGradient(
+                            gradient: Gradient(stops: [
+                                .init(color: .clear,               location: 0.00),
+                                .init(color: .clear,               location: 0.18),
+                                .init(color: .black.opacity(0.45), location: 0.38),
+                                .init(color: .black.opacity(0.90), location: 0.60),
+                                .init(color: .black,               location: 0.78),
+                            ]),
+                            center: .center,
+                            startRadius: 0,
+                            endRadius: geo.size.width * 0.55
+                        )
+                    }
+                    .allowsHitTesting(false)
 
                 // ── Blood overlay ────────────────────────────────────────
                 if game.showBloody {
@@ -994,6 +959,9 @@ struct MainGameView: View {
                     x: CGFloat.random(in: 50...(max(50, geo.size.width  - 50))),
                     y: CGFloat.random(in: 50...(max(50, geo.size.height - 50))))
                 scheduleBgCycle(size: geo.size)
+                withAnimation(.easeInOut(duration: 5).repeatForever(autoreverses: true)) {
+                    skullBreath = 1
+                }
             }
             .onReceive(gameTick) { _ in
                 rain.tick(width: geo.size.width, height: geo.size.height)
