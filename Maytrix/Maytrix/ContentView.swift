@@ -27,9 +27,10 @@ final class AudioManager: ObservableObject {
     private var fourVoicesPlayer: AVAudioPlayer?
     private var grenadePlayer:    AVAudioPlayer?
 
-    private var thunderOn       = false
-    private var thunderGapTask: DispatchWorkItem?
-    private var introPlayed     = false
+    private var thunderOn         = false
+    private var thunderGapTask:   DispatchWorkItem?
+    private var thunderGeneration = 0   // incremented on stop; invalidates stale callbacks
+    private var introPlayed       = false
 
     func setup() {
         // Search bundle by full filename to handle special characters
@@ -107,6 +108,7 @@ final class AudioManager: ObservableObject {
 
     private func stopThunder() {
         thunderOn = false
+        thunderGeneration += 1          // invalidates all pending age-gate poll callbacks
         thunderGapTask?.cancel(); thunderGapTask = nil
         thunderPlayer?.stop();  thunderPlayer?.currentTime  = 0
         narratorPlayer?.stop(); narratorPlayer?.currentTime = 0
@@ -114,31 +116,54 @@ final class AudioManager: ObservableObject {
     }
 
     private func pollThunder() {
+        let gen = thunderGeneration
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
-            guard let self, self.thunderOn else { return }
+            guard let self, self.thunderOn, self.thunderGeneration == gen else { return }
             if !(self.thunderPlayer?.isPlaying ?? false) {
                 self.narratorPlayer?.currentTime = 0; self.narratorPlayer?.play()
-                self.pollNarrator()
+                self.pollNarrator(gen: gen)
             } else { self.pollThunder() }
         }
     }
 
-    private func pollNarrator() {
+    private func pollNarrator(gen: Int) {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
-            guard let self, self.thunderOn else { return }
+            guard let self, self.thunderOn, self.thunderGeneration == gen else { return }
             if !(self.narratorPlayer?.isPlaying ?? false) {
                 let task = DispatchWorkItem { [weak self] in
-                    guard let self, self.thunderOn else { return }
-                    self.startThunder()   // restarts thunder + scream together
+                    guard let self, self.thunderOn, self.thunderGeneration == gen else { return }
+                    self.startThunder()
                 }
                 self.thunderGapTask = task
                 DispatchQueue.main.asyncAfter(deadline: .now() + Double.random(in: 3...7), execute: task)
-            } else { self.pollNarrator() }
+            } else { self.pollNarrator(gen: gen) }
         }
     }
 
     // MARK: Main game audio
-    func enterGame() { stopAgeMusic(); startBgMusic(); startThunder() }
+    func enterGame() { stopAgeMusic(); startBgMusic(); startMainThunder() }
+
+    // Main game: thunder only — no scream, no narrator
+    private func startMainThunder() {
+        thunderOn = true
+        thunderPlayer?.currentTime = 0; thunderPlayer?.play()
+        pollMainThunder()
+    }
+
+    private func pollMainThunder() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
+            guard let self, self.thunderOn else { return }
+            if !(self.thunderPlayer?.isPlaying ?? false) {
+                let task = DispatchWorkItem { [weak self] in
+                    guard let self, self.thunderOn else { return }
+                    self.thunderPlayer?.currentTime = 0; self.thunderPlayer?.play()
+                    self.pollMainThunder()
+                }
+                self.thunderGapTask = task
+                DispatchQueue.main.asyncAfter(deadline: .now() + Double.random(in: 4...10), execute: task)
+            } else { self.pollMainThunder() }
+        }
+    }
 
     func startBgMusic() { bgPlayer?.currentTime = 0; bgPlayer?.play(); bgMusicOn = true }
     func stopBgMusic()  { bgPlayer?.pause(); bgMusicOn = false }
