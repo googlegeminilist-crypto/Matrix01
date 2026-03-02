@@ -345,6 +345,20 @@ private struct AgeDrip: Identifiable {
     var startTime: Date
 }
 
+private struct BloodSplatter: Identifiable {
+    struct Satellite {
+        var dx: CGFloat; var dy: CGFloat; var r: CGFloat
+    }
+    let id = UUID()
+    var x: CGFloat
+    var y: CGFloat
+    var radius: CGFloat       // main blob radius
+    var opacity: Double
+    var spawnTime: Date
+    var lifetime: Double      // seconds before fully faded
+    var satellites: [Satellite]
+}
+
 struct AgeGateView: View {
     let onEnter: () -> Void
     @EnvironmentObject private var audio: AudioManager
@@ -373,26 +387,78 @@ struct AgeGateView: View {
             ZStack {
                 Color.black.ignoresSafeArea()
 
-                // Animated blood drips
-                TimelineView(.animation) { tl in
-                    Canvas { ctx, size in
-                        let now = tl.date
-                        for drip in drips {
-                            let elapsed = CGFloat(now.timeIntervalSince(drip.startTime))
-                            let tipY = drip.startY + elapsed * drip.speed
-                            guard tipY < size.height + drip.length + 20 else { continue }
-                            var stem = Path()
-                            stem.move(to: CGPoint(x: drip.x, y: tipY - drip.length))
-                            stem.addLine(to: CGPoint(x: drip.x, y: tipY))
-                            ctx.stroke(stem,
-                                       with: .color(.init(red: 0.55, green: 0, blue: 0, opacity: 0.82)),
-                                       style: StrokeStyle(lineWidth: drip.width, lineCap: .round))
-                            let r = drip.width * 1.4
-                            let bulb = Path(ellipseIn: CGRect(x: drip.x - r, y: tipY - r * 0.5,
-                                                               width: r * 2, height: r * 2.2))
-                            ctx.fill(bulb, with: .color(.init(red: 0.5, green: 0, blue: 0, opacity: 0.88)))
+                // Animated blood drips — 3-layer DOF (far → near)
+                ZStack {
+                    // Layer 0: far — deep maroon, heavy blur, wide
+                    TimelineView(.animation) { tl in
+                        Canvas { ctx, size in
+                            let now = tl.date
+                            for drip in drips {
+                                let elapsed = CGFloat(now.timeIntervalSince(drip.startTime))
+                                let tipY = drip.startY + elapsed * drip.speed
+                                guard tipY < size.height + drip.length + 20 else { continue }
+                                var stem = Path()
+                                stem.move(to: CGPoint(x: drip.x, y: tipY - drip.length * 1.1))
+                                stem.addLine(to: CGPoint(x: drip.x, y: tipY))
+                                ctx.stroke(stem,
+                                           with: .color(.init(red: 0.20, green: 0, blue: 0, opacity: 0.52)),
+                                           style: StrokeStyle(lineWidth: drip.width * 1.7, lineCap: .round))
+                                let r = drip.width * 2.1
+                                let bulb = Path(ellipseIn: CGRect(x: drip.x - r, y: tipY - r * 0.5,
+                                                                   width: r * 2, height: r * 2.4))
+                                ctx.fill(bulb, with: .color(.init(red: 0.18, green: 0, blue: 0, opacity: 0.55)))
+                            }
                         }
                     }
+                    .blur(radius: 5)
+                    .ignoresSafeArea()
+
+                    // Layer 1: mid — dark red, soft blur
+                    TimelineView(.animation) { tl in
+                        Canvas { ctx, size in
+                            let now = tl.date
+                            for drip in drips {
+                                let elapsed = CGFloat(now.timeIntervalSince(drip.startTime))
+                                let tipY = drip.startY + elapsed * drip.speed
+                                guard tipY < size.height + drip.length + 20 else { continue }
+                                var stem = Path()
+                                stem.move(to: CGPoint(x: drip.x, y: tipY - drip.length))
+                                stem.addLine(to: CGPoint(x: drip.x, y: tipY))
+                                ctx.stroke(stem,
+                                           with: .color(.init(red: 0.48, green: 0, blue: 0, opacity: 0.70)),
+                                           style: StrokeStyle(lineWidth: drip.width * 1.15, lineCap: .round))
+                                let r = drip.width * 1.6
+                                let bulb = Path(ellipseIn: CGRect(x: drip.x - r, y: tipY - r * 0.5,
+                                                                   width: r * 2, height: r * 2.2))
+                                ctx.fill(bulb, with: .color(.init(red: 0.44, green: 0, blue: 0, opacity: 0.75)))
+                            }
+                        }
+                    }
+                    .blur(radius: 1.5)
+                    .ignoresSafeArea()
+
+                    // Layer 2: near — bright blood red, sharp
+                    TimelineView(.animation) { tl in
+                        Canvas { ctx, size in
+                            let now = tl.date
+                            for drip in drips {
+                                let elapsed = CGFloat(now.timeIntervalSince(drip.startTime))
+                                let tipY = drip.startY + elapsed * drip.speed
+                                guard tipY < size.height + drip.length + 20 else { continue }
+                                var stem = Path()
+                                stem.move(to: CGPoint(x: drip.x, y: tipY - drip.length))
+                                stem.addLine(to: CGPoint(x: drip.x, y: tipY))
+                                ctx.stroke(stem,
+                                           with: .color(.init(red: 0.76, green: 0.04, blue: 0.01, opacity: 0.88)),
+                                           style: StrokeStyle(lineWidth: drip.width, lineCap: .round))
+                                let r = drip.width * 1.4
+                                let bulb = Path(ellipseIn: CGRect(x: drip.x - r, y: tipY - r * 0.5,
+                                                                   width: r * 2, height: r * 2.2))
+                                ctx.fill(bulb, with: .color(.init(red: 0.72, green: 0.03, blue: 0.01, opacity: 0.95)))
+                            }
+                        }
+                    }
+                    .ignoresSafeArea()
                 }
                 .ignoresSafeArea()
 
@@ -592,34 +658,34 @@ struct AgeGateView: View {
 
     private func spawnInitialDrips() {
         let w = UIScreen.main.bounds.width
-        drips = (0..<20).map { _ in
+        drips = (0..<30).map { _ in
             AgeDrip(
                 x: CGFloat.random(in: 0...w),
-                startY: CGFloat.random(in: -120...0),
-                length: CGFloat.random(in: 20...70),
-                speed: CGFloat.random(in: 35...100),
-                width: CGFloat.random(in: 1.5...3.5),
-                startTime: Date().addingTimeInterval(-Double.random(in: 0...3.5))
+                startY: CGFloat.random(in: -200...0),
+                length: CGFloat.random(in: 45...130),
+                speed: CGFloat.random(in: 16...52),
+                width: CGFloat.random(in: 1.5...4.0),
+                startTime: Date().addingTimeInterval(-Double.random(in: 0...5.0))
             )
         }
         scheduleRespawn()
     }
 
     private func scheduleRespawn() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + Double.random(in: 1.2...3.0)) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + Double.random(in: 1.0...2.5)) {
             let h = UIScreen.main.bounds.height
             let w = UIScreen.main.bounds.width
             drips = drips.filter { d in
                 let y = d.startY + CGFloat(Date().timeIntervalSince(d.startTime)) * d.speed
-                return y < h + d.length + 30
+                return y < h + d.length + 50
             }
-            for _ in 0..<Int.random(in: 1...3) {
+            for _ in 0..<Int.random(in: 1...4) {
                 drips.append(AgeDrip(
                     x: CGFloat.random(in: 0...w),
                     startY: -20,
-                    length: CGFloat.random(in: 20...70),
-                    speed: CGFloat.random(in: 35...100),
-                    width: CGFloat.random(in: 1.5...3.5),
+                    length: CGFloat.random(in: 45...130),
+                    speed: CGFloat.random(in: 16...52),
+                    width: CGFloat.random(in: 1.5...4.0),
                     startTime: Date()
                 ))
             }
@@ -756,9 +822,10 @@ struct MainGameView: View {
     @StateObject private var rain = MatrixRain()
     @StateObject private var game = GameState()
     @EnvironmentObject private var audio: AudioManager
-    @State private var now          = Date()
-    @State private var screenSize   = CGSize.zero
+    @State private var now              = Date()
+    @State private var screenSize       = CGSize.zero
     @State private var skullBreath: CGFloat = 0
+    @State private var bloodSplatters:  [BloodSplatter] = []
 
     private let gameTick  = Timer.publish(every: 1/30, on: .main, in: .common).autoconnect()
     private let emojiTick = Timer.publish(every: 0.70, on: .main, in: .common).autoconnect()
@@ -920,6 +987,51 @@ struct MainGameView: View {
                                        center: .center, startRadius:0, endRadius:600)
                     }
                     .ignoresSafeArea().allowsHitTesting(false)
+                }
+
+                // ── Blood splatters (triggered when dool disappears) ─────
+                if !bloodSplatters.isEmpty {
+                    TimelineView(.animation) { tl in
+                        Canvas { ctx, _ in
+                            let now = tl.date
+                            for sp in bloodSplatters {
+                                let age = now.timeIntervalSince(sp.spawnTime)
+                                guard age < sp.lifetime else { continue }
+                                let fade = max(0, 1.0 - age / sp.lifetime)
+                                let alpha = sp.opacity * fade
+                                // Main blob — 3 DOF layers
+                                // Far layer: large, very dark, blurry feel via shadow
+                                let c0 = Color(red: 0.18, green: 0, blue: 0, opacity: alpha * 0.5)
+                                let r0 = sp.radius * 1.9
+                                ctx.fill(Path(ellipseIn: CGRect(x: sp.x - r0, y: sp.y - r0 * 0.6,
+                                                                width: r0 * 2, height: r0 * 1.5)), with: .color(c0))
+                                // Mid layer
+                                let c1 = Color(red: 0.50, green: 0, blue: 0, opacity: alpha * 0.72)
+                                let r1 = sp.radius * 1.25
+                                ctx.fill(Path(ellipseIn: CGRect(x: sp.x - r1, y: sp.y - r1 * 0.6,
+                                                                width: r1 * 2, height: r1 * 1.5)), with: .color(c1))
+                                // Near layer: bright blood red
+                                let c2 = Color(red: 0.75, green: 0.04, blue: 0.01, opacity: alpha * 0.95)
+                                let r2 = sp.radius
+                                ctx.fill(Path(ellipseIn: CGRect(x: sp.x - r2, y: sp.y - r2 * 0.6,
+                                                                width: r2 * 2, height: r2 * 1.5)), with: .color(c2))
+                                // Satellite mini-blobs (positions pre-computed, stable each frame)
+                                let sc = Color(red: 0.65, green: 0.02, blue: 0.01, opacity: alpha * 0.80)
+                                for sat in sp.satellites {
+                                    let sx = sp.x + sat.dx
+                                    let sy = sp.y + sat.dy
+                                    ctx.fill(Path(ellipseIn: CGRect(x: sx - sat.r, y: sy - sat.r,
+                                                                    width: sat.r * 2, height: sat.r * 2)), with: .color(sc))
+                                }
+                            }
+                        }
+                    }
+                    .ignoresSafeArea()
+                    .allowsHitTesting(false)
+                    .onReceive(Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()) { _ in
+                        let now = Date()
+                        bloodSplatters.removeAll { now.timeIntervalSince($0.spawnTime) >= $0.lifetime }
+                    }
                 }
 
                 // ── Snake ────────────────────────────────────────────────
@@ -1315,12 +1427,40 @@ struct MainGameView: View {
             if !game.bgVisible {
                 game.showBloody = true
                 spawnBombs(size: size)
+                spawnBloodSplatters(size: size)
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
                     game.showBloody = false
                 }
             }
             scheduleBgCycle(size: size)
         }
+    }
+
+    private func spawnBloodSplatters(size: CGSize) {
+        let count = Int.random(in: 9...16)
+        let newSplatters = (0..<count).map { _ -> BloodSplatter in
+            let r = CGFloat.random(in: 3...11)
+            let satCount = Int.random(in: 4...9)
+            let sats: [BloodSplatter.Satellite] = (0..<satCount).map { s in
+                let angle = CGFloat(s) / CGFloat(satCount) * .pi * 2
+                let dist  = r * CGFloat.random(in: 1.4...2.8)
+                return BloodSplatter.Satellite(
+                    dx: cos(angle) * dist,
+                    dy: sin(angle) * dist * 0.7,
+                    r: CGFloat.random(in: 1.2...3.5)
+                )
+            }
+            return BloodSplatter(
+                x: CGFloat.random(in: size.width * 0.05...size.width * 0.95),
+                y: CGFloat.random(in: size.height * 0.05...size.height * 0.95),
+                radius: r,
+                opacity: Double.random(in: 0.70...1.0),
+                spawnTime: Date(),
+                lifetime: Double.random(in: 2.5...4.0),
+                satellites: sats
+            )
+        }
+        bloodSplatters.append(contentsOf: newSplatters)
     }
 }
 
