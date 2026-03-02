@@ -548,12 +548,13 @@ struct AgeGateView: View {
                         }
                         .opacity(audio.ageMusicOn ? 0.9 : 0.5)
                         .padding(.trailing, 16)
-                        .padding(.top, 56)
+                        .padding(.top, geo.safeAreaInsets.top + 12)
                     }
                     Spacer()
                 }
             }
         }
+        .ignoresSafeArea()
         .onAppear {
             scheduleLightning()
             spawnInitialDrips()
@@ -568,14 +569,13 @@ struct AgeGateView: View {
     @ViewBuilder
     private func formPanel(geo: GeometryProxy) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Spacer().frame(height: geo.size.height * 0.13)
+            Spacer().frame(height: max(geo.safeAreaInsets.top + 14, geo.size.height * 0.08))
 
-            Text("MATRIX01")
+            Text("MATRIX01").tracking(3)
                 .font(.custom("Courier New", size: min(geo.size.width * 0.068, 26)).bold())
                 .foregroundColor(Color(red: 0, green: 1, blue: 0.25))
                 .shadow(color: Color(red: 0, green: 1, blue: 0.25), radius: 8)
                 .shadow(color: Color(red: 0, green: 0.67, blue: 0.16), radius: 22)
-                .tracking(3)
 
             Text("> YOU MUST BE 18+ TO ENTER")
                 .font(.custom("Courier New", size: 8.5))
@@ -631,7 +631,7 @@ struct AgeGateView: View {
     private func warningPanel(geo: GeometryProxy) -> some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 0) {
-                Spacer().frame(height: geo.size.height * 0.12)
+                Spacer().frame(height: max(geo.safeAreaInsets.top + 14, geo.size.height * 0.07))
                 ZStack(alignment: .topLeading) {
                     warningTextLayer(dx: 3, dy: 3, blur: 7,   opacity: 0.18)
                     warningTextLayer(dx: 2, dy: 2, blur: 3.5, opacity: 0.32)
@@ -1125,18 +1125,16 @@ struct MainGameView: View {
                 // ── Title ────────────────────────────────────────────────
                 if game.horrorText == nil {
                     VStack(spacing: 8) {
-                        Text("MATRIX01")
+                        Text("MATRIX01").tracking(8)
                             .font(.custom("Courier New", size: min(geo.size.width * 0.12, 80)).bold())
                             .foregroundColor(Color(red:0,green:1,blue:0.25))
                             .shadow(color: Color(red:0,green:1,blue:0.25), radius: 10)
                             .shadow(color: Color(red:0,green:1,blue:0.25), radius: 30)
                             .shadow(color: Color(red:0,green:0.67,blue:0.16), radius: 60)
-                            .tracking(8)
-                        Text("Wake up, Neo...")
+                        Text("Wake up, Neo...").tracking(10)
                             .font(.custom("Courier New", size: min(geo.size.width * 0.025, 18)))
                             .foregroundColor(Color(red:0,green:0.67,blue:0.16))
                             .shadow(color: Color(red:0,green:0.67,blue:0.16), radius: 8)
-                            .tracking(10)
                     }
                     .allowsHitTesting(false)
                 }
@@ -1158,12 +1156,12 @@ struct MainGameView: View {
                             .font(.custom("Courier New", size: 13))
                             .foregroundColor(Color(red:0.67,green:1,blue:0.87))
                             .shadow(color: Color(red:0.33,green:1,blue:0.67), radius: 6)
-                            .padding(.leading, 20).padding(.top, 52)
+                            .padding(.leading, 20).padding(.top, geo.safeAreaInsets.top + 8)
                         Spacer()
                         Text("SCORE: \(game.playerScore)")
                             .font(.custom("Courier New", size: 13))
                             .foregroundColor(Color(red:0,green:0.67,blue:0.16))
-                            .padding(.trailing, 20).padding(.top, 52)
+                            .padding(.trailing, 20).padding(.top, geo.safeAreaInsets.top + 8)
                     }
                     Spacer()
                     HStack {
@@ -1179,12 +1177,12 @@ struct MainGameView: View {
                                     lineWidth: 1))
                         }
                         .opacity(0.6)
-                        .padding(.leading, 20).padding(.bottom, 24)
+                        .padding(.leading, 20).padding(.bottom, max(geo.safeAreaInsets.bottom, 16))
                         Spacer()
                         Text(timeString)
                             .font(.custom("Courier New", size: 11))
                             .foregroundColor(Color(red:0,green:0.33,blue:0))
-                            .padding(.trailing, 20).padding(.bottom, 24)
+                            .padding(.trailing, 20).padding(.bottom, max(geo.safeAreaInsets.bottom, 16))
                     }
                 }
 
@@ -1196,7 +1194,6 @@ struct MainGameView: View {
                     }
                 }
             }
-            .ignoresSafeArea()
             .onAppear {
                 screenSize = geo.size
                 game.ghostPos = CGPoint(
@@ -1223,6 +1220,7 @@ struct MainGameView: View {
             }
             .onReceive(clockTick) { _ in now = Date() }
         }
+        .ignoresSafeArea()
     }
 
     // MARK: - Draw ghost pixel art
@@ -1484,7 +1482,7 @@ struct RaceResultView: View {
         ZStack {
             Color.black.opacity(0.88).ignoresSafeArea()
             VStack(spacing: 20) {
-                Text(playerWon ? "YOU WIN" : "GHOST WINS")
+                Text(playerWon ? "YOU WIN" : "GHOST WINS").tracking(8)
                     .font(.custom("Courier New", size: 60).bold())
                     .foregroundColor(playerWon
                         ? Color(red:0,green:1,blue:0.25)
@@ -1492,7 +1490,6 @@ struct RaceResultView: View {
                     .shadow(color: playerWon
                         ? Color(red:0,green:1,blue:0.25)
                         : Color(red:0.8,green:0,blue:1), radius: 20)
-                    .tracking(8)
                     .minimumScaleFactor(0.35).lineLimit(1)
                     .multilineTextAlignment(.center)
 
