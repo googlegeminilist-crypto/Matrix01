@@ -63,9 +63,23 @@ final class AudioManager: ObservableObject {
 
     // Looks up a file in the bundle by exact filename (handles special chars)
     private func load(_ filename: String) -> AVAudioPlayer? {
+        // Try 1: standard Bundle lookup (most reliable)
+        let name = (filename as NSString).deletingPathExtension
+        let ext  = (filename as NSString).pathExtension
+        if let url = Bundle.main.url(forResource: name, withExtension: ext) {
+            let p = try? AVAudioPlayer(contentsOf: url)
+            p?.prepareToPlay()
+            return p
+        }
+        // Try 2: brute-force search by last path component (handles special chars)
         let all = Bundle.main.urls(forResourcesWithExtension: nil, subdirectory: nil) ?? []
-        guard let url = all.first(where: { $0.lastPathComponent == filename }) else { return nil }
-        return try? AVAudioPlayer(contentsOf: url)
+        if let url = all.first(where: { $0.lastPathComponent == filename }) {
+            let p = try? AVAudioPlayer(contentsOf: url)
+            p?.prepareToPlay()
+            return p
+        }
+        print("⚠️ AudioManager: could not find '\(filename)' in bundle")
+        return nil
     }
 
     // MARK: Age gate audio
@@ -143,6 +157,8 @@ final class AudioManager: ObservableObject {
     // MARK: Main game audio
     func enterGame() { stopAgeMusic(); startBgMusic(); startMainThunder() }
 
+    func exitGame() { stopBgMusic(); stopThunder(); startAgeMusic() }
+
     // Main game: thunder only — no scream, no narrator
     private func startMainThunder() {
         thunderOn = true
@@ -165,7 +181,12 @@ final class AudioManager: ObservableObject {
         }
     }
 
-    func startBgMusic() { bgPlayer?.currentTime = 0; bgPlayer?.play(); bgMusicOn = true }
+    func startBgMusic() {
+        bgPlayer?.currentTime = 0
+        bgPlayer?.prepareToPlay()
+        bgPlayer?.play()
+        bgMusicOn = true
+    }
     func stopBgMusic()  { bgPlayer?.pause(); bgMusicOn = false }
     func toggleBgMusic() { bgMusicOn ? stopBgMusic() : startBgMusic() }
 
@@ -355,7 +376,10 @@ struct ContentView: View {
     var body: some View {
         Group {
             if ageCleared {
-                MainGameView()
+                MainGameView(onHome: {
+                    audio.exitGame()
+                    ageCleared = false
+                })
             } else {
                 AgeGateView(onEnter: {
                     audio.enterGame()
@@ -854,6 +878,7 @@ struct GrenadeDOFView: View {
 // MARK: - Main Game
 
 struct MainGameView: View {
+    let onHome: () -> Void
     @StateObject private var rain = MatrixRain()
     @StateObject private var game = GameState()
     @EnvironmentObject private var audio: AudioManager
@@ -1203,7 +1228,23 @@ struct MainGameView: View {
                         }
                         .opacity(0.6)
                         .padding(.leading, 20).padding(.bottom, max(geo.safeAreaInsets.bottom, 16))
+
                         Spacer()
+
+                        Button { onHome() } label: {
+                            Text("HOME")
+                                .font(.custom("Courier New", size: 11))
+                                .foregroundColor(Color(red: 0, green: 0.67, blue: 0.16))
+                                .padding(.horizontal, 14).padding(.vertical, 6)
+                                .background(Color.black.opacity(0.72))
+                                .overlay(Rectangle().stroke(
+                                    Color(red: 0, green: 0.33, blue: 0), lineWidth: 1))
+                        }
+                        .opacity(0.7)
+                        .padding(.bottom, max(geo.safeAreaInsets.bottom, 16))
+
+                        Spacer()
+
                         Text(timeString)
                             .font(.custom("Courier New", size: 11))
                             .foregroundColor(Color(red:0,green:0.33,blue:0))
