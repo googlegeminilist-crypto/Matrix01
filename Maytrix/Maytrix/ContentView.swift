@@ -746,36 +746,104 @@ struct MainGameView: View {
                 }
                 .blendMode(.screen)
 
-                // ── cool dool DOF background ──────────────────────────────
-                // Base: full-screen, luminosity blend on black
+                // ── cool dool 3D DOF background — 4 layers ───────────────
+                // dofR = actual corner distance × 1.05 → corners always past the clear stop
+                let dofR = hypot(geo.size.width, geo.size.height) * 0.53
+
+                // Layer 0: sharp center — clipped + vignette; clear stop at 0.74
+                // so all four corners (ratio ≈ 0.88) are fully transparent
                 Image("cooldool")
                     .resizable().scaledToFill()
                     .frame(width: geo.size.width, height: geo.size.height)
                     .clipped()
-                    .opacity(0.65)
+                    .opacity(0.72)
                     .blendMode(.luminosity)
+                    .mask {
+                        RadialGradient(
+                            gradient: Gradient(stops: [
+                                .init(color: .black,               location: 0.00),
+                                .init(color: .black,               location: 0.36),
+                                .init(color: .black.opacity(0.80), location: 0.48),
+                                .init(color: .black.opacity(0.38), location: 0.58),
+                                .init(color: .black.opacity(0.08), location: 0.66),
+                                .init(color: .clear,               location: 0.74),
+                            ]),
+                            center: .center, startRadius: 0, endRadius: dofR
+                        )
+                    }
                     .allowsHitTesting(false)
-                // DOF layer: blurred edge halo, breathing, ring-masked
+
+                // Layer 1: soft blur (radius 8) — ring peak at 0.52, clears by 0.84
                 Image("cooldool")
                     .resizable().scaledToFill()
                     .frame(width: geo.size.width, height: geo.size.height)
-                    .blur(radius: 14)
-                    .brightness(0.08)
-                    .saturation(1.2)
-                    .opacity(0.50 + 0.22 * skullBreath)
+                    .clipped()
+                    .blur(radius: 8)
+                    .opacity(0.55 + 0.15 * skullBreath)
                     .blendMode(.luminosity)
                     .mask {
                         RadialGradient(
                             gradient: Gradient(stops: [
                                 .init(color: .clear,               location: 0.00),
-                                .init(color: .clear,               location: 0.18),
-                                .init(color: .black.opacity(0.45), location: 0.38),
-                                .init(color: .black.opacity(0.90), location: 0.60),
-                                .init(color: .black,               location: 0.78),
+                                .init(color: .clear,               location: 0.24),
+                                .init(color: .black.opacity(0.20), location: 0.36),
+                                .init(color: .black.opacity(0.68), location: 0.52),
+                                .init(color: .black.opacity(0.82), location: 0.62),
+                                .init(color: .black.opacity(0.35), location: 0.74),
+                                .init(color: .clear,               location: 0.84),
                             ]),
-                            center: .center,
-                            startRadius: 0,
-                            endRadius: geo.size.width * 0.55
+                            center: .center, startRadius: 0, endRadius: dofR
+                        )
+                    }
+                    .allowsHitTesting(false)
+
+                // Layer 2: medium blur (radius 20) — ring peak at 0.64, clears by 0.90
+                Image("cooldool")
+                    .resizable().scaledToFill()
+                    .frame(width: geo.size.width, height: geo.size.height)
+                    .clipped()
+                    .blur(radius: 20)
+                    .brightness(0.06)
+                    .opacity(0.42 + 0.13 * skullBreath)
+                    .blendMode(.luminosity)
+                    .mask {
+                        RadialGradient(
+                            gradient: Gradient(stops: [
+                                .init(color: .clear,               location: 0.00),
+                                .init(color: .clear,               location: 0.38),
+                                .init(color: .black.opacity(0.16), location: 0.50),
+                                .init(color: .black.opacity(0.58), location: 0.64),
+                                .init(color: .black.opacity(0.70), location: 0.72),
+                                .init(color: .black.opacity(0.22), location: 0.82),
+                                .init(color: .clear,               location: 0.90),
+                            ]),
+                            center: .center, startRadius: 0, endRadius: dofR
+                        )
+                    }
+                    .allowsHitTesting(false)
+
+                // Layer 3: heavy blur (radius 38) — outermost haze, clears by 0.96
+                Image("cooldool")
+                    .resizable().scaledToFill()
+                    .frame(width: geo.size.width, height: geo.size.height)
+                    .clipped()
+                    .blur(radius: 38)
+                    .brightness(0.10)
+                    .saturation(1.3)
+                    .opacity(0.28 + 0.10 * skullBreath)
+                    .blendMode(.luminosity)
+                    .mask {
+                        RadialGradient(
+                            gradient: Gradient(stops: [
+                                .init(color: .clear,               location: 0.00),
+                                .init(color: .clear,               location: 0.54),
+                                .init(color: .black.opacity(0.12), location: 0.64),
+                                .init(color: .black.opacity(0.44), location: 0.74),
+                                .init(color: .black.opacity(0.52), location: 0.82),
+                                .init(color: .black.opacity(0.14), location: 0.90),
+                                .init(color: .clear,               location: 0.96),
+                            ]),
+                            center: .center, startRadius: 0, endRadius: dofR
                         )
                     }
                     .allowsHitTesting(false)
