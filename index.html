@@ -1613,6 +1613,7 @@
 
     function tickGhost() {
       if (raceOver) return;
+      if (ageGate.style.display !== 'none') { requestAnimationFrame(tickGhost); return; }
       gctx.clearRect(0, 0, ghostCanvas.width, ghostCanvas.height);
 
       ghost.floatT  += 0.045;
@@ -1625,33 +1626,63 @@
       var flicker = 1 - (Math.max(0, Math.sin(ghost.flickerT)) * 0.12 * (1 - base));
       ghost.alpha = Math.max(0.35, base * flicker);
 
-      if (!ghost.target || !ghost.target.parentNode) {
-        ghost.target = pickGhostTarget();
-      }
-
-      if (ghost.target && ghost.target.parentNode) {
-        var tx   = parseFloat(ghost.target.style.left) + 14;
-        var ty   = parseFloat(ghost.target.style.top)  + 14;
-        var dx   = tx - ghost.x;
-        var dy   = ty - ghost.y;
-        var dist = Math.sqrt(dx * dx + dy * dy);
-
-        if (dist > 4) {
-          var spd = 8.5;
-          ghost.x += (dx / dist) * spd + Math.sin(ghost.floatT * 1.1) * 0.8;
-          ghost.y += (dy / dist) * spd + Math.cos(ghost.floatT * 0.7) * 0.5;
-          var gw = 40, gh = 40;
-          ghost.x = Math.max(0, Math.min(window.innerWidth  - gw, ghost.x));
-          ghost.y = Math.max(0, Math.min(window.innerHeight - gh, ghost.y));
+      if (hardcoreMode) {
+        // Hardcore: don't start until user has clicked an emoji
+        if (score === 0) { requestAnimationFrame(tickGhost); return; }
+        // Teleport randomly, land on emoji to keep pace with player
+        if (!ghost._tpTimer) ghost._tpTimer = 0;
+        ghost._tpTimer++;
+        if (ghost._tpTimer >= 90 + Math.floor(Math.random() * 60)) {
+          ghost._tpTimer = 0;
+          var alive = activeEmojis.filter(function(e) { return !!e.parentNode; });
+          // Ghost scores more when behind, less when ahead — keeps race tight but can win
+          var gap = score - aiScore;
+          var chance = gap > 20 ? 0.30 : gap > 0 ? 0.20 : gap > -20 ? 0.10 : 0.05;
+          var shouldScore = alive.length && Math.random() < chance;
+          if (shouldScore) {
+            var pick = alive[Math.floor(Math.random() * alive.length)];
+            ghost.x = parseFloat(pick.style.left) + 14;
+            ghost.y = parseFloat(pick.style.top)  + 14;
+            aiScore++;
+            aiScoreEl.textContent = 'GHOST: ' + aiScore;
+            showPointFlash(ghost.x, ghost.y - 20, 'BOO!');
+            checkRace();
+            removeEmoji(pick);
+          } else {
+            ghost.x = 40 + Math.random() * (window.innerWidth  - 80);
+            ghost.y = 40 + Math.random() * (window.innerHeight - 80);
+          }
+        }
+      } else {
+        // Normal: glide toward emoji targets
+        if (!ghost.target || !ghost.target.parentNode) {
+          ghost.target = pickGhostTarget();
         }
 
-        if (dist < 45) {
-          aiScore++;
-          aiScoreEl.textContent = 'GHOST: ' + aiScore;
-          showPointFlash(ghost.x, ghost.y - 20, 'BOO!');
-          checkRace();
-          removeEmoji(ghost.target);
-          ghost.target = null;
+        if (ghost.target && ghost.target.parentNode) {
+          var tx   = parseFloat(ghost.target.style.left) + 14;
+          var ty   = parseFloat(ghost.target.style.top)  + 14;
+          var dx   = tx - ghost.x;
+          var dy   = ty - ghost.y;
+          var dist = Math.sqrt(dx * dx + dy * dy);
+
+          if (dist > 4) {
+            var spd = 8.5;
+            ghost.x += (dx / dist) * spd + Math.sin(ghost.floatT * 1.1) * 0.8;
+            ghost.y += (dy / dist) * spd + Math.cos(ghost.floatT * 0.7) * 0.5;
+            var gw = 40, gh = 40;
+            ghost.x = Math.max(0, Math.min(window.innerWidth  - gw, ghost.x));
+            ghost.y = Math.max(0, Math.min(window.innerHeight - gh, ghost.y));
+          }
+
+          if (dist < 45) {
+            aiScore++;
+            aiScoreEl.textContent = 'GHOST: ' + aiScore;
+            showPointFlash(ghost.x, ghost.y - 20, 'BOO!');
+            checkRace();
+            removeEmoji(ghost.target);
+            ghost.target = null;
+          }
         }
       }
 
