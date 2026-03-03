@@ -821,6 +821,8 @@
       &gt; If you click an orange bomb you lose all of your points<br>
       &gt; Race the ghost reach 1000 points before it to win
     </div>
+    <div id="hardcore-btn" style="color:#00ff41;font-family:'Courier New',monospace;font-size:clamp(0.7rem,1.2vw,0.95rem);letter-spacing:0.1em;text-shadow:0 0 6px #005500;cursor:pointer;margin:0.6rem 0 0.2rem 0;-webkit-user-select:none;user-select:none;">[ ] HARDCORE MODE</div>
+    <div style="color:#00aa2a;font-family:'Courier New',monospace;font-size:clamp(0.55rem,0.9vw,0.72rem);letter-spacing:0.06em;text-shadow:0 0 4px #003300;margin:0 0 0.6rem 0;">Click the box to enable. No grenades. No snake. Pure skill.</div>
     <input type="number" id="age-input" placeholder="AGE" min="1" max="120" />
     <button type="button" id="age-btn">ENTER</button>
     <div id="age-error"></div>
@@ -855,6 +857,12 @@
     var ageInput = document.getElementById('age-input');
     var ageBtn   = document.getElementById('age-btn');
     var ageError = document.getElementById('age-error');
+    var hardcoreMode = false;
+    var hcBtn = document.getElementById('hardcore-btn');
+    hcBtn.addEventListener('click', function() {
+      hardcoreMode = !hardcoreMode;
+      hcBtn.textContent = hardcoreMode ? '[X] HARDCORE MODE' : '[ ] HARDCORE MODE';
+    });
 
     function checkAge() {
       var val = parseInt(ageInput.value, 10);
@@ -1268,14 +1276,14 @@
         scoreEl.textContent = 'SCORE: ' + score;
         maybePlaySpooky();
         showPointFlash(e.clientX, e.clientY, '+1');
-        if (score % 100 === 0) startSnake();
+        if (!hardcoreMode && score % 100 === 0) startSnake();
         checkRace();
         maybeShowHorrorText();
         var r = el.getBoundingClientRect();
         var _cx = r.left + r.width/2, _cy = r.top + r.height/2;
         if (Math.random() < 0.5) spawnZombieBurst(_cx, _cy);
         else spawnZombie2Burst(_cx, _cy);
-        if (Math.random() < 0.30) spawnGrenade();
+        if (!hardcoreMode && Math.random() < 0.30) spawnGrenade();
         removeEmoji(el);
       });
 
@@ -1449,7 +1457,7 @@
         if (hit) {
           score += 5;
           scoreEl.textContent = 'SCORE: ' + score;
-          if (score % 100 === 0) startSnake();
+          if (!hardcoreMode && score % 100 === 0) startSnake();
           checkRace();
           maybePlaySpooky();
           showPointFlash(ecx, ecy, '+5');
