@@ -1632,12 +1632,12 @@
         // Teleport randomly, land on emoji to keep pace with player
         if (!ghost._tpTimer) ghost._tpTimer = 0;
         ghost._tpTimer++;
-        if (ghost._tpTimer >= 90 + Math.floor(Math.random() * 60)) {
+        if (ghost._tpTimer >= 50 + Math.floor(Math.random() * 40)) {
           ghost._tpTimer = 0;
           var alive = activeEmojis.filter(function(e) { return !!e.parentNode; });
-          // Ghost scores more when behind, less when ahead — keeps race tight but can win
+          // Ghost scores more when behind, less when ahead — can overtake and win
           var gap = score - aiScore;
-          var chance = gap > 20 ? 0.30 : gap > 0 ? 0.20 : gap > -20 ? 0.10 : 0.05;
+          var chance = gap > 30 ? 0.35 : gap > 10 ? 0.25 : gap > 0 ? 0.18 : gap > -30 ? 0.14 : 0.08;
           var shouldScore = alive.length && Math.random() < chance;
           if (shouldScore) {
             var pick = alive[Math.floor(Math.random() * alive.length)];
