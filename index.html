@@ -619,19 +619,21 @@
     }
 
     #age-gate p {
-      color: #005500;
-      font-size: 0.8rem;
-      letter-spacing: 0.08em;
+      color: #00ff41;
+      font-size: clamp(0.75rem, 1.5vw, 1.15rem);
+      letter-spacing: 0.06em;
+      line-height: 2.2;
       margin: 0 0 0.5rem 0;
       text-align: left;
+      text-shadow: 0 0 6px #005500;
     }
-    #age-gate p::before { content: '> '; color: #00ff41; }
+    #age-gate p::before { content: '> '; }
 
     #age-gate .instructions {
-      color: #00aa2a;
-      font-size: clamp(0.6rem, 1.1vw, 0.78rem);
+      color: #00ff41;
+      font-size: clamp(0.75rem, 1.5vw, 1.15rem);
       letter-spacing: 0.06em;
-      line-height: 1.9;
+      line-height: 2.2;
       text-align: left;
       text-shadow: 0 0 6px #005500;
       margin: 0 0 0.8rem 0;
@@ -815,7 +817,6 @@
     <div class="instructions">
       &gt; Click the music icon for dark music<br>
       &gt; Click the emojis for spooky sounds<br>
-      &gt; Read the story and be drawn into it<br>
       &gt; When you have entered tap grenades to get 50 points<br>
       &gt; Race the ghost reach 1000 points before it to win
     </div>
