@@ -1637,7 +1637,7 @@
           var alive = activeEmojis.filter(function(e) { return !!e.parentNode; });
           // Ghost scores more when behind, less when ahead — can overtake and win
           var gap = score - aiScore;
-          var chance = gap > 30 ? 0.35 : gap > 10 ? 0.25 : gap > 0 ? 0.18 : gap > -30 ? 0.14 : 0.08;
+          var chance = gap > 30 ? 0.40 : gap > 10 ? 0.30 : gap > 0 ? 0.25 : gap > -30 ? 0.20 : 0.15;
           var shouldScore = alive.length && Math.random() < chance;
           if (shouldScore) {
             var pick = alive[Math.floor(Math.random() * alive.length)];
