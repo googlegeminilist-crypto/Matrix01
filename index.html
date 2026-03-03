@@ -540,26 +540,9 @@
     }
     /* NEAR — sharp, bright, 12-step 3D blood extrusion + perspective */
     .wt-near {
-      /* fresh arterial blood — dark crimson, wet shine, no neon glow */
       color: #c41200;
-      animation: bloodPulse 4.2s ease-in-out infinite, bloodFloat 7s ease-in-out infinite;
-      text-shadow:
-        /* wet-blood specular highlight — tiny bright spot top-left */
-        -1px -1px 0 rgba(220, 80, 60, 0.55),
-        /* dark edge rim — makes letters feel solid/carved */
-         0    0   1px #0a0000,
-        /* 3D extrusion — dark blood stepping into the screen */
-        1px  2px  0 #a01000,
-        2px  4px  0 #8c0e00,
-        3px  6px  0 #780c00,
-        4px  8px  0 #640a00,
-        5px 10px  0 #500800,
-        6px 12px  0 #3c0600,
-        7px 14px  0 #280400,
-        8px 16px  0 #140200,
-        /* deep pool shadow at base */
-        9px 18px  6px rgba(8, 0, 0, 0.92),
-       12px 22px 12px rgba(0, 0, 0, 0.85);
+      animation: bloodFloat 7s ease-in-out infinite;
+      text-shadow: 0 0 2px rgba(196, 18, 0, 0.6);
     }
 
     /* ── BLOOD DRIPS ── */
@@ -925,7 +908,7 @@
         return '<span style="display:block">' + l + '</span>';
       }).join('');
       var wrap = document.getElementById('warning-wrap');
-      ['xfar', 'far', 'mid', 'near'].forEach(function(d) {
+      ['near'].forEach(function(d) {
         var div = document.createElement('div');
         div.className = 'wt-layer wt-' + d;
         div.innerHTML = html;
