@@ -1307,7 +1307,7 @@
     var horrorIndex = 0;
 
     function maybeShowHorrorText() {
-      if (Math.random() >= 0.05) return;
+      return; // disabled — horror text popups removed
       var text = HORROR_TEXTS[horrorIndex % HORROR_TEXTS.length];
       horrorIndex++;
       var el = document.createElement('div');
