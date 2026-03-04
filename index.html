@@ -402,6 +402,12 @@
       opacity: 0.45;
     }
 
+    @keyframes hintPulse {
+      0%   { opacity: 1; }
+      50%  { opacity: 0.4; }
+      100% { opacity: 1; }
+    }
+
     #snake-canvas {
       position: fixed;
       top: 0;
@@ -815,6 +821,7 @@
   <div id="age-gate">
     <audio id="age-music" src="age-music.mp3" loop preload="auto"></audio>
     <button type="button" id="age-music-btn" title="Toggle music">&#9834;</button>
+    <div id="music-hint" style="position:absolute;top:4.2rem;right:0.4rem;z-index:50;text-align:center;color:#00ff41;font-family:'Courier New',monospace;font-size:clamp(0.9rem,1.8vw,1.3rem);text-shadow:0 0 8px #00ff41,0 0 20px #00aa2a;pointer-events:none;animation:hintPulse 2s ease-in-out infinite;">&#8593;<br>CLICK HERE<br>FOR SOUND<br>&amp; MUSIC</div>
     <div id="warning-wrap"></div>
     <div class="skull-layer skull-base"></div>
     <div class="skull-layer skull-dof1"></div>
@@ -2179,6 +2186,8 @@
           ageMusOn = true;
           ageMusBtn.classList.remove('muted');
           ageMusBtn.innerHTML = '&#9834;';
+          var hint = document.getElementById('music-hint');
+          if (hint) hint.style.display = 'none';
           startThunder();
           if (!introPlayed) {
             introPlayed = true;
@@ -2214,6 +2223,8 @@
       ageMusBtn.addEventListener('click', function(e) {
         e.stopPropagation();
         interacted = true;
+        var hint = document.getElementById('music-hint');
+        if (hint) hint.style.display = 'none';
         if (ageMusOn) {
           stopMusic();
         } else {
