@@ -2386,22 +2386,29 @@
       thunder.volume      = 0.30;
       thunder.preload     = 'auto';
       // gap between thunder strikes: narrator → scream → thunder again
-      thunder.addEventListener('ended', function() {
+      function thunderEndedHandler() {
         if (!thunderOn || ageAudioKilled) return;
         narrator.currentTime = 0;
-        narrator.play().catch(function(){});
+        narrator.play().then(function() {
+          if (ageAudioKilled) { narrator.pause(); narrator.currentTime = 0; }
+        }).catch(function(){});
         narrator.onended = function() {
           if (!thunderOn || ageAudioKilled) return;
           scream.currentTime = 0;
-          scream.play().catch(function(){});
+          scream.play().then(function() {
+            if (ageAudioKilled) { scream.pause(); scream.currentTime = 0; }
+          }).catch(function(){});
           thunderGapTimer = setTimeout(function() {
             if (!thunderOn || ageAudioKilled) return;
             scream.pause(); scream.currentTime = 0;
             thunder.currentTime = 0;
-            thunder.play().catch(function(){});
+            thunder.play().then(function() {
+              if (ageAudioKilled) { thunder.pause(); thunder.currentTime = 0; }
+            }).catch(function(){});
           }, 3000 + Math.random() * 4000);
         };
-      });
+      }
+      thunder.addEventListener('ended', thunderEndedHandler);
 
       function startThunder() {
         thunderOn = true;
@@ -2419,18 +2426,23 @@
 
       // kill ALL age-page audio (voiceovers, music, thunder)
       var ageAudioKilled = false;
+      function killAgeAudio() {
+        narrator.pause(); narrator.currentTime = 0; narrator.onended = null;
+        scream.pause(); scream.currentTime = 0;
+        thunder.pause(); thunder.currentTime = 0;
+        villainIntro.pause(); villainIntro.currentTime = 0;
+      }
       window._stopAllAgeAudio = function() {
         ageAudioKilled = true;
         stopMusic();
         stopThunder();
-        villainIntro.pause(); villainIntro.currentTime = 0;
-        // safety: pause again after a tick in case a callback restarted something
-        setTimeout(function() {
-          narrator.pause(); narrator.currentTime = 0; narrator.onended = null;
-          scream.pause(); scream.currentTime = 0;
-          thunder.pause(); thunder.currentTime = 0;
-          villainIntro.pause(); villainIntro.currentTime = 0;
-        }, 50);
+        // remove the ended listener so thunder chain can never restart
+        thunder.removeEventListener('ended', thunderEndedHandler);
+        killAgeAudio();
+        // safety: pause again after delays in case async play() resolved late
+        setTimeout(killAgeAudio, 50);
+        setTimeout(killAgeAudio, 200);
+        setTimeout(killAgeAudio, 500);
       };
 
       function startMusic() {
