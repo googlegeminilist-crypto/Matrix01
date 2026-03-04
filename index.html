@@ -908,7 +908,7 @@
 
       /* Game UI — overlay title */
       #overlay { display: none !important; }
-      #cursor-canvas { display: none !important; }
+      /* cursor canvas stays visible on mobile — just smaller pumpkin */
       #matrix-dof, #matrix-dof2, #matrix-dof3, #matrix-dof4 { display: none !important; }
       #trail-canvas { display: none !important; }
 
@@ -1480,7 +1480,7 @@
         removeEmoji(el);
       });
 
-      var lifetime = 3000 + Math.random() * 4000;
+      var lifetime = isMobile ? (2000 + Math.random() * 2500) : (3000 + Math.random() * 4000);
       setTimeout(function() { removeEmoji(el); }, lifetime);
     }
 
@@ -1710,7 +1710,7 @@
       spawnEmoji();
       spawnEmoji();
     }
-    setInterval(spawnBatch, 700);
+    setInterval(spawnBatch, isMobile ? 450 : 700);
 
     var ts = document.getElementById('timestamp');
     function tick() {
@@ -1861,7 +1861,7 @@
           var dist = Math.sqrt(dx * dx + dy * dy);
 
           if (dist > 4) {
-            var spd = 8.5;
+            var spd = isMobile ? 12 : 8.5;
             ghost.x += (dx / dist) * spd + Math.sin(ghost.floatT * 1.1) * 0.8;
             ghost.y += (dy / dist) * spd + Math.cos(ghost.floatT * 0.7) * 0.5;
             var gw = 40, gh = 40;
@@ -2212,7 +2212,7 @@
       document.body.appendChild(el);
       activeBombs.push(el);
 
-      var speed  = 1.8 + Math.random() * 2.2;
+      var speed  = (isMobile ? 2.8 : 1.8) + Math.random() * 2.2;
       el.addEventListener('click', function() {
         score = 0;
         scoreEl.textContent = 'SCORE: 0';
@@ -2262,6 +2262,14 @@
       mouseX = e.clientX;
       mouseY = e.clientY;
     });
+    document.addEventListener('touchmove', function(e) {
+      mouseX = e.touches[0].clientX;
+      mouseY = e.touches[0].clientY;
+    }, { passive: true });
+    document.addEventListener('touchstart', function(e) {
+      mouseX = e.touches[0].clientX;
+      mouseY = e.touches[0].clientY;
+    }, { passive: true });
 
     // 0=empty 1=stem 2=body 3=carving 4=eye-glow 5=tooth
     var PUMPKIN = [
@@ -2279,17 +2287,17 @@
       [0,2,2,2,2,2,2,2,2,0],
       [0,0,2,2,2,2,2,2,0,0]
     ];
-    var P_PX = 5;
+    var P_PX = isMobile ? 2 : 5;
 
     var pumpkinBob = 0;
 
     function drawPumpkinCursor(x, y) {
       pumpkinBob += 0.08;
-      var by = Math.sin(pumpkinBob) * 3;
+      var by = Math.sin(pumpkinBob) * (isMobile ? 1.5 : 3);
       var pw = PUMPKIN[0].length * P_PX;
       var ph = PUMPKIN.length    * P_PX;
 
-      cctx.shadowBlur  = 20;
+      cctx.shadowBlur  = isMobile ? 6 : 20;
       cctx.shadowColor = 'rgba(255,100,0,0.9)';
 
       for (var row = 0; row < PUMPKIN.length; row++) {
@@ -2310,12 +2318,11 @@
     }
 
     function animateCursor() {
-      if (isMobile) return;  // no custom cursor on touch devices
       cctx.clearRect(0, 0, cursorCanvas.width, cursorCanvas.height);
       drawPumpkinCursor(mouseX, mouseY);
       requestAnimationFrame(animateCursor);
     }
-    if (!isMobile) animateCursor();
+    animateCursor();
 
     // ── AGE SCREEN MUSIC + VILLAIN INTRO ─────────────────────────────────
     (function() {
@@ -2653,12 +2660,14 @@
 
     function spawnZombie2Burst(cx, cy) {
       if (!zombie2Url) return;
-      var layers = [
-        { sz: 320, blur: 22,  op: 0.18, dur: 0.65 },
-        { sz: 255, blur: 10,  op: 0.42, dur: 0.73 },
-        { sz: 200, blur: 3,   op: 0.78, dur: 0.80 },
-        { sz: 165, blur: 0,   op: 1.00, dur: 0.88 }
-      ];
+      var layers = isMobile
+        ? [{ sz: 120, blur: 0, op: 1.00, dur: 0.80 }]
+        : [
+          { sz: 320, blur: 22,  op: 0.18, dur: 0.65 },
+          { sz: 255, blur: 10,  op: 0.42, dur: 0.73 },
+          { sz: 200, blur: 3,   op: 0.78, dur: 0.80 },
+          { sz: 165, blur: 0,   op: 1.00, dur: 0.88 }
+        ];
       layers.forEach(function(L) {
         var img = document.createElement('img');
         img.className = 'zombie-burst';
@@ -2725,8 +2734,11 @@
       wrap.className = 'grenade-target';
       wrap.style.left = gx + 'px';
       wrap.style.top  = gy + 'px';
-      // 3 DOF layers: blurry halo → sharp centre
-      [{sz:110,blur:10,op:0.25},{sz:88,blur:3,op:0.55},{sz:70,blur:0,op:1.0}].forEach(function(L) {
+      // 3 DOF layers: blurry halo → sharp centre (mobile: sharp only)
+      var grenadeLayers = isMobile
+        ? [{sz:55,blur:0,op:1.0}]
+        : [{sz:110,blur:10,op:0.25},{sz:88,blur:3,op:0.55},{sz:70,blur:0,op:1.0}];
+      grenadeLayers.forEach(function(L) {
         var img = document.createElement('img');
         img.src = grenadeUrl;
         img.style.cssText = 'position:absolute;width:'+L.sz+'px;height:auto;left:50%;top:50%;transform:translate(-50%,-50%);opacity:'+L.op+';pointer-events:none;';
@@ -2764,12 +2776,14 @@
 
     function spawnZombieBurst(cx, cy) {
       if (!zombieUrl) return;
-      var layers = [
-        { sz: 310, blur: 20,  op: 0.20, dur: 0.62 },
-        { sz: 250, blur: 9,   op: 0.45, dur: 0.70 },
-        { sz: 195, blur: 2.5, op: 0.75, dur: 0.78 },
-        { sz: 160, blur: 0,   op: 1.00, dur: 0.86 }
-      ];
+      var layers = isMobile
+        ? [{ sz: 120, blur: 0, op: 1.00, dur: 0.80 }]
+        : [
+          { sz: 310, blur: 20,  op: 0.20, dur: 0.62 },
+          { sz: 250, blur: 9,   op: 0.45, dur: 0.70 },
+          { sz: 195, blur: 2.5, op: 0.75, dur: 0.78 },
+          { sz: 160, blur: 0,   op: 1.00, dur: 0.86 }
+        ];
       layers.forEach(function(L) {
         var img = document.createElement('img');
         img.className = 'zombie-burst';
