@@ -2254,7 +2254,7 @@
       document.body.appendChild(el);
       activeBombs.push(el);
 
-      var speed  = (isMobile ? 2.8 : 1.8) + Math.random() * 2.2;
+      var speed  = (isMobile ? 5.5 : 1.8) + Math.random() * 2.2;
       el.addEventListener('click', function() {
         score = 0;
         scoreEl.textContent = 'SCORE: 0';
@@ -2387,15 +2387,15 @@
       thunder.preload     = 'auto';
       // gap between thunder strikes: narrator → scream → thunder again
       thunder.addEventListener('ended', function() {
-        if (!thunderOn) return;
+        if (!thunderOn || ageAudioKilled) return;
         narrator.currentTime = 0;
         narrator.play().catch(function(){});
         narrator.onended = function() {
-          if (!thunderOn) return;
+          if (!thunderOn || ageAudioKilled) return;
           scream.currentTime = 0;
           scream.play().catch(function(){});
           thunderGapTimer = setTimeout(function() {
-            if (!thunderOn) return;
+            if (!thunderOn || ageAudioKilled) return;
             scream.pause(); scream.currentTime = 0;
             thunder.currentTime = 0;
             thunder.play().catch(function(){});
@@ -2418,10 +2418,19 @@
       window._stopThunder = stopThunder;
 
       // kill ALL age-page audio (voiceovers, music, thunder)
+      var ageAudioKilled = false;
       window._stopAllAgeAudio = function() {
+        ageAudioKilled = true;
         stopMusic();
         stopThunder();
         villainIntro.pause(); villainIntro.currentTime = 0;
+        // safety: pause again after a tick in case a callback restarted something
+        setTimeout(function() {
+          narrator.pause(); narrator.currentTime = 0; narrator.onended = null;
+          scream.pause(); scream.currentTime = 0;
+          thunder.pause(); thunder.currentTime = 0;
+          villainIntro.pause(); villainIntro.currentTime = 0;
+        }, 50);
       };
 
       function startMusic() {
