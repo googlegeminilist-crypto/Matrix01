@@ -821,6 +821,147 @@
       z-index: 10;
     }
 
+    /* ── MOBILE ────────────────────────────────────────────── */
+    @media (max-width: 600px) {
+      /* Age gate: stack vertically instead of side-by-side */
+      #age-gate {
+        padding-left: 1.2rem !important;
+        padding-right: 1.2rem !important;
+        padding-top: 1rem;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        text-align: center;
+        overflow-y: auto;
+      }
+      #age-gate > *:not(.skull-layer):not(#warning-wrap):not(#age-music-btn):not(#music-hint):not(audio) {
+        max-width: 90vw !important;
+        text-align: center;
+      }
+      #age-gate h1 {
+        font-size: clamp(1.4rem, 7vw, 2.2rem) !important;
+        text-align: center;
+        margin-top: 0.5rem;
+      }
+      #age-gate p {
+        font-size: clamp(0.7rem, 3.5vw, 1rem) !important;
+        text-align: center;
+      }
+      #age-gate .instructions {
+        font-size: clamp(0.65rem, 3vw, 0.9rem) !important;
+        max-width: 90vw !important;
+        text-align: left;
+        line-height: 1.8 !important;
+      }
+      #age-gate input[type="number"] {
+        width: 5rem;
+        font-size: 1.1rem;
+        margin: 0.3rem auto;
+      }
+      #age-gate button {
+        margin: 0.3rem auto;
+        font-size: 0.9rem;
+        padding: 0.5rem 2rem;
+      }
+      #age-error { text-align: center; }
+
+      /* Hide skull on mobile — not enough space */
+      .skull-layer { display: none !important; }
+
+      /* Warning text: below form instead of right side */
+      #warning-wrap {
+        position: relative !important;
+        left: auto !important;
+        right: auto !important;
+        top: auto !important;
+        bottom: auto !important;
+        width: 100% !important;
+        max-height: 30vh;
+        overflow-y: auto;
+        margin-top: 0.5rem;
+        z-index: 8;
+      }
+      .wt-layer {
+        position: relative !important;
+        inset: auto !important;
+        padding: 0.5rem 1rem !important;
+        font-size: clamp(0.6rem, 3vw, 0.85rem) !important;
+        line-height: 1.6 !important;
+        text-align: center;
+      }
+
+      /* Music hint — reposition for mobile */
+      #music-hint {
+        top: 3.8rem !important;
+        right: 0 !important;
+        font-size: 0.7rem !important;
+      }
+      #music-hint span { font-size: inherit !important; }
+
+      /* Age music button */
+      #age-music-btn {
+        top: 0.6rem !important;
+        right: 0.6rem !important;
+        width: 2.8rem !important;
+        height: 2.8rem !important;
+        font-size: 1.2rem !important;
+      }
+
+      /* Game UI — overlay title */
+      #overlay { display: none !important; }
+
+      /* Score displays */
+      #score {
+        top: 0.5rem !important;
+        left: 0.5rem !important;
+        font-size: clamp(0.6rem, 3vw, 0.85rem) !important;
+      }
+      #ai-score {
+        top: 0.5rem !important;
+        right: auto !important;
+        left: 0.5rem !important;
+        top: 1.8rem !important;
+        font-size: clamp(0.6rem, 3vw, 0.85rem) !important;
+      }
+
+      /* Timestamp */
+      #timestamp {
+        bottom: 0.4rem !important;
+        right: 0.4rem !important;
+        font-size: 0.6rem !important;
+      }
+
+      /* Music toggle — game screen */
+      #music-toggle {
+        bottom: 0.5rem !important;
+        left: 0.5rem !important;
+        width: 2.6rem !important;
+        height: 2.6rem !important;
+        font-size: 1.1rem !important;
+      }
+
+      /* Emoji targets — slightly smaller */
+      .emoji-target {
+        font-size: clamp(1rem, 5vw, 1.4rem) !important;
+      }
+
+      /* Grenade targets — smaller on mobile */
+      .grenade-target {
+        width: 55px !important;
+        height: 55px !important;
+      }
+      .grenade-target img { max-width: 55px !important; max-height: 55px !important; }
+
+      /* Bomb targets — smaller on mobile */
+      .bomb-target {
+        width: 55px !important;
+        height: 55px !important;
+        font-size: 2.4rem !important;
+      }
+
+      /* Hardcore mode */
+      #hardcore-btn { font-size: clamp(0.65rem, 3vw, 0.9rem) !important; text-align: center; }
+    }
+
   </style>
 </head>
 <!-- Google tag (gtag.js) -->
@@ -1303,7 +1444,7 @@
       var el = document.createElement('div');
       el.className = 'emoji-target';
       el.textContent = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
-      var margin = 60;
+      var margin = window.innerWidth < 600 ? 20 : 60;
       el.style.left = (margin + Math.random() * (window.innerWidth  - margin * 2)) + 'px';
       el.style.top  = (margin + Math.random() * (window.innerHeight - margin * 2)) + 'px';
       document.body.appendChild(el);
@@ -2044,7 +2185,8 @@
       var el = document.createElement('div');
       el.className = 'bomb-target';
       el.textContent = '\uD83D\uDCA3';
-      var bx = 60 + Math.random() * (window.innerWidth - 120);
+      var bMargin = window.innerWidth < 600 ? 20 : 60;
+      var bx = bMargin + Math.random() * (window.innerWidth - bMargin * 2);
       el.style.left = bx + 'px';
       el.style.top  = '-60px';
       document.body.appendChild(el);
@@ -2555,7 +2697,7 @@
 
     function spawnGrenade() {
       if (!grenadeUrl) return;
-      var margin = 90;
+      var margin = window.innerWidth < 600 ? 30 : 90;
       var gx = margin + Math.random() * (window.innerWidth  - margin * 2);
       var gy = margin + Math.random() * (window.innerHeight - margin * 2);
       var wrap = document.createElement('div');
