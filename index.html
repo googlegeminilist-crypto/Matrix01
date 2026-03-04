@@ -908,6 +908,9 @@
 
       /* Game UI — overlay title */
       #overlay { display: none !important; }
+      #cursor-canvas { display: none !important; }
+      #matrix-dof, #matrix-dof2, #matrix-dof3, #matrix-dof4 { display: none !important; }
+      #trail-canvas { display: none !important; }
 
       /* Score displays */
       #score {
@@ -1030,6 +1033,9 @@
     function debounce(fn, ms) {
       var t; return function() { clearTimeout(t); t = setTimeout(fn, ms); };
     }
+
+    var isMobile = window.innerWidth < 600;
+    window.addEventListener('resize', debounce(function() { isMobile = window.innerWidth < 600; }, 100));
 
     var ageGate  = document.getElementById('age-gate');
     var ageInput = document.getElementById('age-input');
@@ -1187,11 +1193,12 @@
       }
 
       // staggered burst on load
-      for (var di = 0; di < 12; di++) {
+      var burstCount = isMobile ? 5 : 12;
+      for (var di = 0; di < burstCount; di++) {
         setTimeout(spawnDrip, di * 160);
       }
-      // steady drip stream — faster for more coverage
-      setInterval(spawnDrip, 180 + Math.floor(Math.random() * 200));
+      // steady drip stream — slower on mobile
+      setInterval(spawnDrip, isMobile ? 400 : (180 + Math.floor(Math.random() * 200)));
 
     })();
     ageInput.addEventListener('keydown', function(e) {
@@ -1220,20 +1227,25 @@
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
       cols = Math.floor(canvas.width / FONT_SIZE);
+      // on mobile, use every other column for performance
+      var step = isMobile ? 2 : 1;
       drops = [];
-      for (var i = 0; i < cols; i++) {
-        drops[i] = Math.floor(Math.random() * -100);
+      for (var i = 0; i < cols; i += step) {
+        drops[i / step | 0] = Math.floor(Math.random() * -100);
       }
+      // store step so draw() can space columns correctly
+      canvas._colStep = step;
     }
 
     function draw() {
       ctx.fillStyle = 'rgba(0, 0, 0, 0.03)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.font = FONT_SIZE + 'px "Courier New", monospace';
+      var step = canvas._colStep || 1;
 
       for (var i = 0; i < drops.length; i++) {
         var y = drops[i] * FONT_SIZE;
-        var x = i * FONT_SIZE;
+        var x = i * step * FONT_SIZE;
         var char = CHARS[Math.floor(Math.random() * CHARS.length)];
 
         ctx.fillStyle = '#eeffee';
@@ -1253,7 +1265,7 @@
 
     resize();
     window.addEventListener('resize', debounce(resize, 100));
-    setInterval(draw, 40);
+    setInterval(draw, isMobile ? 66 : 40);
 
     // --- MATRIX + IMAGE DEPTH OF FIELD ---
     // Two blurred canvas copies of the matrix at different blur levels,
@@ -1285,6 +1297,7 @@
 
     function animateDOF() {
       if (!matrixDOF) return;
+      if (isMobile) return;  // skip DOF on mobile for performance
       for (var li = 0; li < dofCtxs.length; li++) {
         var dc = dofCanvases[li], dx = dofCtxs[li];
         dx.clearRect(0, 0, dc.width, dc.height);
@@ -1768,7 +1781,7 @@
 
     function drawGhost(x, y, a) {
       var evil = (GHOST_MAP === GHOST_EVIL);
-      gctx.shadowBlur  = 24;
+      gctx.shadowBlur  = isMobile ? 0 : 24;
       gctx.shadowColor = evil ? 'rgba(180,0,255,' + a + ')' : 'rgba(120,255,190,' + a + ')';
       for (var row = 0; row < GHOST_MAP.length; row++) {
         for (var col = 0; col < GHOST_MAP[row].length; col++) {
@@ -1899,7 +1912,10 @@
       }
     });
 
+    var bloodFrameSkip = 0;
     function animateBlood() {
+      // on mobile skip every other frame
+      if (isMobile) { bloodFrameSkip++; if (bloodFrameSkip % 2) { requestAnimationFrame(animateBlood); return; } }
       bloodPhase += 0.07;
       // flash: alternate between showing blood and showing matrix clearly
       var flash = 0.65 + Math.sin(bloodPhase) * 0.35;
@@ -2111,13 +2127,15 @@
     }
 
     function startBloodGore() {
-      for (var i = 0; i < 8; i++) spawnDrip();
-      for (var j = 0; j < 6; j++) spawnSplat();
+      var burstD = isMobile ? 3 : 8;
+      var burstS = isMobile ? 2 : 6;
+      for (var i = 0; i < burstD; i++) spawnDrip();
+      for (var j = 0; j < burstS; j++) spawnSplat();
       goreInterval = setInterval(function() {
-        var nd = Math.floor(Math.random() * 3);
-        for (var k = 0; k <= nd; k++) if (Math.random() < 0.82) spawnDrip();
-        if (Math.random() < 0.68) spawnSplat();
-      }, 200);
+        var nd = Math.floor(Math.random() * (isMobile ? 2 : 3));
+        for (var k = 0; k <= nd; k++) if (Math.random() < (isMobile ? 0.4 : 0.82)) spawnDrip();
+        if (Math.random() < (isMobile ? 0.3 : 0.68)) spawnSplat();
+      }, isMobile ? 500 : 200);
     }
 
     function stopBloodGore() {
@@ -2156,7 +2174,9 @@
       }, delay);
     }
 
+    var bgFrameSkip = 0;
     function animateBg() {
+      if (isMobile) { bgFrameSkip++; if (bgFrameSkip % 3) { requestAnimationFrame(animateBg); return; } }
       if (Math.abs(bgCurrentOp - bgTargetOp) > 0.004) {
         bgCurrentOp += (bgTargetOp - bgCurrentOp) * 0.05;
         bgImg.style.opacity = bgCurrentOp.toFixed(3);
@@ -2290,11 +2310,12 @@
     }
 
     function animateCursor() {
+      if (isMobile) return;  // no custom cursor on touch devices
       cctx.clearRect(0, 0, cursorCanvas.width, cursorCanvas.height);
       drawPumpkinCursor(mouseX, mouseY);
       requestAnimationFrame(animateCursor);
     }
-    animateCursor();
+    if (!isMobile) animateCursor();
 
     // ── AGE SCREEN MUSIC + VILLAIN INTRO ─────────────────────────────────
     (function() {
