@@ -609,7 +609,7 @@
       overflow: hidden;
     }
     /* age gate content floats above the skull layers */
-    #age-gate > *:not(.skull-layer):not(#warning-wrap):not(#age-music-btn):not(audio) {
+    #age-gate > *:not(.skull-layer):not(#warning-wrap):not(#age-music-btn):not(#music-hint):not(audio) {
       position: relative;
       z-index: 10;
       max-width: 28vw;
@@ -821,7 +821,7 @@
   <div id="age-gate">
     <audio id="age-music" src="age-music.mp3" loop preload="auto"></audio>
     <button type="button" id="age-music-btn" title="Toggle music">&#9834;</button>
-    <div id="music-hint" style="position:absolute;top:4.2rem;right:0.4rem;z-index:50;text-align:center;color:#00ff41;font-family:'Courier New',monospace;font-size:clamp(0.9rem,1.8vw,1.3rem);text-shadow:0 0 8px #00ff41,0 0 20px #00aa2a;pointer-events:none;animation:hintPulse 2s ease-in-out infinite;">&#8593;<br>CLICK HERE<br>FOR SOUND<br>&amp; MUSIC</div>
+    <div id="music-hint" style="position:absolute;top:4.2rem;right:0.2rem;z-index:50;text-align:center;color:#00ff41;font-family:'Courier New',monospace;text-shadow:0 0 8px #00ff41,0 0 20px #00aa2a;pointer-events:none;animation:hintPulse 2s ease-in-out infinite;line-height:1.4;"><span style="font-size:clamp(1.2rem,2.2vw,1.8rem);">&#8593;</span><br><span style="font-size:clamp(0.85rem,1.6vw,1.2rem);">CLICK HERE<br>FOR SOUND<br>&amp; MUSIC</span><br><span style="font-size:clamp(0.5rem,0.9vw,0.7rem);color:#00aa2a;">Wait for 2 voiceovers<br>if you wish to hear both</span></div>
     <div id="warning-wrap"></div>
     <div class="skull-layer skull-base"></div>
     <div class="skull-layer skull-dof1"></div>
