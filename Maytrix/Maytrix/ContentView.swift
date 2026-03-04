@@ -423,8 +423,6 @@ struct AgeGateView: View {
     let onEnter: () -> Void
     @EnvironmentObject private var audio: AudioManager
 
-    @State private var ageText       = ""
-    @State private var errorMsg      = ""
     @State private var boltPath:     [(CGPoint, CGPoint)] = []
     @State private var boltOpacity:  Double  = 0
     @State private var skullBreath:  CGFloat = 0
@@ -645,30 +643,12 @@ struct AgeGateView: View {
             }
             .padding(.top, 2)
 
-            TextField("AGE", text: $ageText)
-                .font(.custom("Courier New", size: 17))
-                .foregroundColor(Color(red: 0, green: 1, blue: 0.25))
-                .keyboardType(.numberPad)
-                .frame(width: 72)
-                .padding(6)
-                .background(Color.black)
-                .overlay(Rectangle().stroke(Color(red: 0, green: 0.67, blue: 0.16), lineWidth: 1))
-                .padding(.top, 8)
-
-            Button("ENTER") { checkAge() }
+            Button("ENTER") { onEnter() }
                 .font(.custom("Courier New", size: 13))
                 .foregroundColor(Color(red: 0, green: 1, blue: 0.25))
                 .padding(.horizontal, 18).padding(.vertical, 7)
                 .background(Color.black)
                 .overlay(Rectangle().stroke(Color(red: 0, green: 0.67, blue: 0.16), lineWidth: 1))
-
-            if !errorMsg.isEmpty {
-                Text(errorMsg)
-                    .font(.custom("Courier New", size: 9.5))
-                    .foregroundColor(.red)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: geo.size.width * 0.44, alignment: .leading)
-            }
 
             Spacer()
         }
@@ -710,11 +690,6 @@ struct AgeGateView: View {
 
     // MARK: Logic
 
-    private func checkAge() {
-        guard let val = Int(ageText) else { errorMsg = "PLEASE ENTER YOUR AGE."; return }
-        if val < 18 { errorMsg = "ACCESS DENIED.\nMUST BE 18+"; ageText = ""; return }
-        onEnter()
-    }
 
     private func spawnInitialDrips() {
         let w = UIScreen.main.bounds.width
