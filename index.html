@@ -4,6 +4,13 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Matrix01</title>
+  <link rel="preconnect" href="https://www.googletagmanager.com">
+  <link rel="dns-prefetch" href="https://www.googletagmanager.com">
+  <link rel="preload" as="image" href="cool dool.png">
+  <link rel="preload" as="image" href="skull.png">
+  <link rel="preload" as="audio" href="age-music.mp3">
+  <link rel="preload" as="audio" href="villain-intro.mp3">
+  <link rel="preload" as="audio" href="thunder.mp3">
   <style>
     *, *::before, *::after {
       box-sizing: border-box;
@@ -184,6 +191,7 @@
         0 0 30px #00ff41,
         0 0 60px #00aa2a;
       -webkit-user-select: none;
+      -moz-user-select: none;
       user-select: none;
     }
 
@@ -196,6 +204,7 @@
       text-shadow: 0 0 8px #00aa2a;
       text-transform: uppercase;
       -webkit-user-select: none;
+      -moz-user-select: none;
       user-select: none;
     }
 
@@ -208,6 +217,7 @@
       pointer-events: all;
       transition: opacity 0.15s, filter 0.15s;
       -webkit-user-select: none;
+      -moz-user-select: none;
       user-select: none;
       filter: drop-shadow(0 0 5px #990000) drop-shadow(0 0 12px #550000) brightness(0.75);
     }
@@ -270,6 +280,7 @@
       letter-spacing: 0.1em;
       z-index: 20;
       -webkit-user-select: none;
+      -moz-user-select: none;
       user-select: none;
     }
 
@@ -284,6 +295,7 @@
       text-shadow: 0 0 6px #55ffaa;
       z-index: 20;
       -webkit-user-select: none;
+      -moz-user-select: none;
       user-select: none;
     }
 
@@ -357,6 +369,7 @@
       opacity: 0.6;
       transition: opacity 0.2s, border-color 0.2s;
       -webkit-user-select: none;
+      -moz-user-select: none;
       user-select: none;
     }
 
@@ -389,6 +402,7 @@
       opacity: 0.85;
       transition: opacity 0.2s, border-color 0.2s, box-shadow 0.2s;
       -webkit-user-select: none;
+      -moz-user-select: none;
       user-select: none;
     }
     #age-music-btn:hover {
@@ -779,6 +793,7 @@
       pointer-events: all;
       cursor: pointer;
       -webkit-user-select: none;
+      -moz-user-select: none;
       user-select: none;
       width: 82px;
       height: 82px;
@@ -801,6 +816,7 @@
       color: #005500;
       letter-spacing: 0.1em;
       -webkit-user-select: none;
+      -moz-user-select: none;
       user-select: none;
       z-index: 10;
     }
@@ -837,7 +853,7 @@
       &gt; If you click an orange bomb you lose all of your points<br>
       &gt; Race the ghost reach 1000 points before it to win
     </div>
-    <div id="hardcore-btn" style="color:#00ff41;font-family:'Courier New',monospace;font-size:clamp(0.7rem,1.2vw,0.95rem);letter-spacing:0.1em;text-shadow:0 0 6px #005500;cursor:pointer;margin:0.6rem 0 0.2rem 0;-webkit-user-select:none;user-select:none;">[ ] HARDCORE MODE</div>
+    <div id="hardcore-btn" style="color:#00ff41;font-family:'Courier New',monospace;font-size:clamp(0.7rem,1.2vw,0.95rem);letter-spacing:0.1em;text-shadow:0 0 6px #005500;cursor:pointer;margin:0.6rem 0 0.2rem 0;-webkit-user-select:none;-moz-user-select:none;user-select:none;">[ ] HARDCORE MODE</div>
     <div style="color:#00aa2a;font-family:'Courier New',monospace;font-size:clamp(0.55rem,0.9vw,0.72rem);letter-spacing:0.06em;text-shadow:0 0 4px #003300;margin:0 0 0.6rem 0;">Click the box above. An [X] means Hardcore Mode is on. No grenades. No snake. Pure skill.</div>
     <input type="number" id="age-input" placeholder="AGE" min="1" max="120" />
     <button type="button" id="age-btn">ENTER</button>
@@ -869,6 +885,11 @@
   <button type="button" id="music-toggle" title="Toggle music">&#9834;</button>
 
   <script>
+    // Debounce helper for resize handlers
+    function debounce(fn, ms) {
+      var t; return function() { clearTimeout(t); t = setTimeout(fn, ms); };
+    }
+
     var ageGate  = document.getElementById('age-gate');
     var ageInput = document.getElementById('age-input');
     var ageBtn   = document.getElementById('age-btn');
@@ -1090,7 +1111,7 @@
     }
 
     resize();
-    window.addEventListener('resize', resize);
+    window.addEventListener('resize', debounce(resize, 100));
     setInterval(draw, 40);
 
     // --- MATRIX + IMAGE DEPTH OF FIELD ---
@@ -1119,7 +1140,7 @@
       });
     }
     resizeDOF();
-    window.addEventListener('resize', resizeDOF);
+    window.addEventListener('resize', debounce(resizeDOF, 100));
 
     function animateDOF() {
       if (!matrixDOF) return;
@@ -1137,6 +1158,7 @@
     var bgMusic = new Audio('Untitled 4.mp3');
     bgMusic.loop = true;
     bgMusic.volume = 0.5;
+    bgMusic.preload = 'auto';
 
     var musicOn = false;
     var musicBtn = document.getElementById('music-toggle');
@@ -1155,11 +1177,11 @@
       }
     });
 
-    var spookySnd   = new Audio('Spooky,_creepy,_eeri-1758049336211.mp3');
-    var laughSnd    = new Audio('freesound_community-succubus-laughter-71829 (1).mp3');
-    var whisperSnd  = new Audio('a_women_whispering_H-%232-1758097415704.mp3');
-    var shotgunSnd  = new Audio('kakaist-sound-shotgun-sfx-318127.mp3');
-    var fourVoices  = new Audio('freesound_community-four_voices_whispering_2_wecho-6755.mp3');
+    var spookySnd   = new Audio('Spooky,_creepy,_eeri-1758049336211.mp3'); spookySnd.preload = 'auto';
+    var laughSnd    = new Audio('freesound_community-succubus-laughter-71829 (1).mp3'); laughSnd.preload = 'auto';
+    var whisperSnd  = new Audio('a_women_whispering_H-%232-1758097415704.mp3'); whisperSnd.preload = 'auto';
+    var shotgunSnd  = new Audio('kakaist-sound-shotgun-sfx-318127.mp3'); shotgunSnd.preload = 'auto';
+    var fourVoices  = new Audio('freesound_community-four_voices_whispering_2_wecho-6755.mp3'); fourVoices.preload = 'auto';
 
     whisperSnd.addEventListener('ended', function() {
       shotgunSnd.currentTime = 0;
@@ -1392,7 +1414,7 @@
       snakeCanvas.height = window.innerHeight;
     }
     resizeSnake();
-    window.addEventListener('resize', resizeSnake);
+    window.addEventListener('resize', debounce(resizeSnake, 100));
 
     function pickSnakeTarget() {
       var alive = activeEmojis.filter(function(e) { return !!e.parentNode; });
@@ -1529,6 +1551,7 @@
     }
 
     function spawnBatch() {
+      if (raceOver) return;
       spawnEmoji();
       spawnEmoji();
       spawnEmoji();
@@ -1553,7 +1576,7 @@
       ghostCanvas.height = window.innerHeight;
     }
     resizeGhost();
-    window.addEventListener('resize', resizeGhost);
+    window.addEventListener('resize', debounce(resizeGhost, 100));
 
     // evil: 0=empty 1=body 2=brow 3=eye 4=fang
     var GHOST_EVIL = [
@@ -1722,7 +1745,7 @@
       trailCanvas.height = window.innerHeight;
     }
     resizeTrail();
-    window.addEventListener('resize', resizeTrail);
+    window.addEventListener('resize', debounce(resizeTrail, 100));
 
     document.addEventListener('mousemove', function(e) {
       if (Math.random() < 0.6) {
@@ -2016,6 +2039,7 @@
     }
 
     function spawnOneBomb() {
+      if (raceOver) return;
       if (battleMode) return;
       var el = document.createElement('div');
       el.className = 'bomb-target';
@@ -2066,10 +2090,10 @@
     var cctx = cursorCanvas.getContext('2d');
     cursorCanvas.width  = window.innerWidth;
     cursorCanvas.height = window.innerHeight;
-    window.addEventListener('resize', function() {
+    window.addEventListener('resize', debounce(function() {
       cursorCanvas.width  = window.innerWidth;
       cursorCanvas.height = window.innerHeight;
-    });
+    }, 100));
 
     var mouseX = -200, mouseY = -200;
     document.addEventListener('mousemove', function(e) {
@@ -2141,8 +2165,8 @@
       var introPlayed = false;
       var thunderOn   = false;
       var thunderGapTimer = null;
-      var scream    = new Audio('a-whoa-female-scream-soun-wwpmi5wq.wav');
-      var narrator  = new Audio('ElevenLabs_2026-03-01T21_40_40_Ezekiel \u2013 raspy narrator_pvc_sp77_s40_sb75_se50_b_m2.mp3');
+      var scream    = new Audio('a-whoa-female-scream-soun-wwpmi5wq.wav'); scream.preload = 'auto';
+      var narrator  = new Audio('ElevenLabs_2026-03-01T21_40_40_Ezekiel \u2013 raspy narrator_pvc_sp77_s40_sb75_se50_b_m2.mp3'); narrator.preload = 'auto';
       scream.volume   = 0.85;
       narrator.volume = 0.90;
       ageAudio.volume     = 0.75;
