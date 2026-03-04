@@ -351,12 +351,7 @@ final class GameState: ObservableObject {
     }
 
     func maybeHorror() {
-        guard Double.random(in: 0...1) < 0.05 else { return }
-        horrorText = horrorTexts[horrorIndex % horrorTexts.count]
-        horrorIndex += 1
-        DispatchQueue.main.asyncAfter(deadline: .now() + 10) { [weak self] in
-            self?.horrorText = nil
-        }
+        return // disabled — horror texts now play in StoryView before game
     }
 
     func reset() {
@@ -1466,7 +1461,7 @@ struct MainGameView: View {
         let dy = target.pos.y - game.ghostPos.y
         let dist = sqrt(dx*dx + dy*dy)
         if dist > 4 {
-            let spd: CGFloat = 8.5
+            let spd: CGFloat = 22.0
             game.ghostPos = CGPoint(
                 x: max(0, min(size.width  - 40, game.ghostPos.x + (dx/dist)*spd + sin(game.ghostFloatT*1.1)*0.8)),
                 y: max(0, min(size.height - 40, game.ghostPos.y + (dy/dist)*spd + cos(game.ghostFloatT*0.7)*0.5)))

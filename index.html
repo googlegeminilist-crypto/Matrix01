@@ -880,6 +880,7 @@
       if (am) { am.pause(); am.currentTime = 0; }
       if (window._stopThunder) window._stopThunder();
       ageGate.style.display = 'none';
+      document.getElementById('overlay').style.display = 'none';
       bgMusic.currentTime = 0;
       bgMusic.play().catch(function(){});
       musicOn = true;
