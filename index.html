@@ -2411,9 +2411,12 @@
       thunder.addEventListener('ended', thunderEndedHandler);
 
       function startThunder() {
+        if (ageAudioKilled) return;
         thunderOn = true;
         thunder.currentTime = 0;
-        thunder.play().catch(function(){});
+        thunder.play().then(function() {
+          if (ageAudioKilled) { thunder.pause(); thunder.currentTime = 0; }
+        }).catch(function(){});
       }
       function stopThunder() {
         thunderOn = false;
@@ -2446,7 +2449,9 @@
       };
 
       function startMusic() {
+        if (ageAudioKilled) return;
         ageAudio.play().then(function() {
+          if (ageAudioKilled) { ageAudio.pause(); ageAudio.currentTime = 0; return; }
           ageMusOn = true;
           ageMusBtn.classList.remove('muted');
           ageMusBtn.innerHTML = '&#9834;';
@@ -2455,7 +2460,9 @@
           startThunder();
           if (!introPlayed) {
             introPlayed = true;
-            villainIntro.play().catch(function(){});
+            villainIntro.play().then(function() {
+              if (ageAudioKilled) { villainIntro.pause(); villainIntro.currentTime = 0; }
+            }).catch(function(){});
           }
         }).catch(function(){
           // autoplay blocked — ageMusOn stays false so click handler will retry
@@ -2478,6 +2485,7 @@
 
       // any click on the age gate starts music if not already playing
       document.getElementById('age-gate').addEventListener('click', function() {
+        if (ageAudioKilled) return;
         if (!ageMusOn) {
           startMusic();
         }
