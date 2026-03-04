@@ -372,13 +372,19 @@ final class GameState: ObservableObject {
 struct ContentView: View {
     @StateObject private var audio = AudioManager()
     @State private var ageCleared = false
+    @State private var storyDone  = false
 
     var body: some View {
         Group {
-            if ageCleared {
+            if ageCleared && storyDone {
                 MainGameView(onHome: {
                     audio.exitGame()
                     ageCleared = false
+                    storyDone  = false
+                })
+            } else if ageCleared {
+                StoryView(onComplete: {
+                    storyDone = true
                 })
             } else {
                 AgeGateView(onEnter: {
@@ -872,6 +878,121 @@ struct GrenadeDOFView: View {
                 pulse = true
             }
         }
+    }
+}
+
+// MARK: - Story Sequence
+
+struct StoryView: View {
+    let onComplete: () -> Void
+    @StateObject private var rain = MatrixRain()
+
+    private let stories = [
+        "The dark one will destroy your soul inside the horror train.\nHe will cut away at your brain.\nYour heart will be his supper.\nYou will be in pain — you will be his dinner.",
+        "Before the dark one kills you, he will feed you nightmares.\nYou will dream horrors beyond your imagination.\nTears of blood will fall down your face for years.\nUntil you die, you will be trapped in a nightmare.",
+        "He lives inside the dole.\nHe has possessed the dole — it's where it hides its soul.\nIf you find it and kill it, you might live to tell the tale.\nBut be warned, no one has survived — you will fail."
+    ]
+
+    @State private var currentStory  = 0
+    @State private var displayedText = ""
+    @State private var charIndex     = 0
+    @State private var textOpacity   = 1.0
+    @State private var pausing       = false
+
+    private let typeTick = Timer.publish(every: 0.04, on: .main, in: .common).autoconnect()
+    private let rainTick = Timer.publish(every: 1/30, on: .main, in: .common).autoconnect()
+
+    var body: some View {
+        GeometryReader { geo in
+            ZStack {
+                Color.black.ignoresSafeArea()
+
+                // Matrix rain background
+                TimelineView(.animation) { _ in
+                    Canvas { ctx, size in
+                        let fs = rain.fontSize
+                        for (i, drop) in rain.drops.enumerated() {
+                            let x = CGFloat(i) * fs + fs / 2
+                            let headY = drop * fs
+                            let trailLen = 20
+                            for t in 1...trailLen {
+                                let ty = (drop - CGFloat(t)) * fs
+                                guard ty > -fs && ty < size.height + fs else { continue }
+                                let op = Double(trailLen - t) / Double(trailLen) * 0.85
+                                ctx.draw(
+                                    Text(String(rain.randomChar()))
+                                        .font(.custom("Courier New", fixedSize: fs - 2))
+                                        .foregroundColor(Color(red: 0, green: 1, blue: 0.25, opacity: op)),
+                                    at: CGPoint(x: x, y: ty), anchor: .center)
+                            }
+                            guard headY > -fs && headY < size.height + fs else { continue }
+                            ctx.draw(
+                                Text(String(rain.randomChar()))
+                                    .font(.custom("Courier New", fixedSize: fs - 2))
+                                    .foregroundColor(Color(red: 0.93, green: 1, blue: 0.93)),
+                                at: CGPoint(x: x, y: headY), anchor: .center)
+                        }
+                    }
+                }
+                .blendMode(.screen)
+                .opacity(0.4)
+
+                // Dark overlay for readability
+                Color.black.opacity(0.6).ignoresSafeArea()
+
+                // Story text
+                VStack {
+                    Spacer()
+                    Text(displayedText)
+                        .font(.custom("Courier New", size: 18))
+                        .foregroundColor(Color(red: 0, green: 1, blue: 0.25))
+                        .shadow(color: Color(red: 0, green: 1, blue: 0.25).opacity(0.8), radius: 6)
+                        .shadow(color: Color(red: 0, green: 0.5, blue: 0.1).opacity(0.4), radius: 16)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 32)
+                        .opacity(textOpacity)
+                    Spacer()
+
+                    Text("TAP TO SKIP")
+                        .font(.custom("Courier New", size: 12))
+                        .foregroundColor(Color(red: 0, green: 0.67, blue: 0.16).opacity(0.5))
+                        .padding(.bottom, 30)
+                }
+            }
+            .onReceive(rainTick) { _ in
+                rain.tick(width: geo.size.width, height: geo.size.height)
+            }
+        }
+        .onReceive(typeTick) { _ in
+            guard !pausing else { return }
+            guard currentStory < stories.count else { return }
+
+            let story = stories[currentStory]
+            if charIndex < story.count {
+                let idx = story.index(story.startIndex, offsetBy: charIndex)
+                displayedText.append(story[idx])
+                charIndex += 1
+            } else {
+                // Finished typing this story — pause then advance
+                pausing = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                    withAnimation(.easeOut(duration: 0.6)) { textOpacity = 0 }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
+                        currentStory += 1
+                        if currentStory >= stories.count {
+                            onComplete()
+                        } else {
+                            displayedText = ""
+                            charIndex = 0
+                            textOpacity = 1.0
+                            pausing = false
+                        }
+                    }
+                }
+            }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture { onComplete() }
     }
 }
 
