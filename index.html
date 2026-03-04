@@ -911,6 +911,11 @@
       /* cursor canvas stays visible on mobile — just smaller pumpkin */
       #matrix-dof, #matrix-dof2, #matrix-dof3, #matrix-dof4 { display: none !important; }
       #trail-canvas { display: none !important; }
+      #bg-image-dof { display: none !important; }
+      #snake-canvas { image-rendering: pixelated; }
+      #bloody-overlay {
+        background: radial-gradient(ellipse at 50% 50%, rgba(80,0,0,0.3) 0%, rgba(6,0,0,0.9) 100%) !important;
+      }
 
       /* Score displays */
       #score {
@@ -945,6 +950,11 @@
       /* Emoji targets — slightly smaller */
       .emoji-target {
         font-size: clamp(1rem, 5vw, 1.4rem) !important;
+        filter: none !important;
+        transition: none !important;
+      }
+      .emoji-target:hover {
+        filter: none !important;
       }
 
       /* Grenade targets — smaller on mobile */
@@ -958,6 +968,8 @@
       .bomb-target {
         width: 55px !important;
         height: 55px !important;
+        box-shadow: 0 0 8px 2px #ff2200 !important;
+        animation: none !important;
         font-size: 2.4rem !important;
       }
 
@@ -1061,6 +1073,11 @@
         return;
       }
       if (window._stopAllAgeAudio) window._stopAllAgeAudio();
+      // clear age-gate drip spawner
+      if (window._ageDripInterval) { clearInterval(window._ageDripInterval); window._ageDripInterval = null; }
+      // remove leftover age-gate blood drips from DOM
+      var ageDrips = document.querySelectorAll('#warning-wrap .blood-drip');
+      for (var d = 0; d < ageDrips.length; d++) ageDrips[d].remove();
       ageGate.style.display = 'none';
       document.getElementById('overlay').style.display = 'none';
       bgMusic.currentTime = 0;
@@ -1196,7 +1213,7 @@
         setTimeout(spawnDrip, di * 160);
       }
       // steady drip stream — slower on mobile
-      setInterval(spawnDrip, isMobile ? 400 : (180 + Math.floor(Math.random() * 200)));
+      window._ageDripInterval = setInterval(spawnDrip, isMobile ? 400 : (180 + Math.floor(Math.random() * 200)));
 
     })();
     ageInput.addEventListener('keydown', function(e) {
@@ -1249,7 +1266,7 @@
         ctx.fillStyle = '#eeffee';
         ctx.fillText(char, x, y);
 
-        if (drops[i] > 1) {
+        if (!isMobile && drops[i] > 1) {
           ctx.fillStyle = '#00ff41';
           ctx.fillText(CHARS[Math.floor(Math.random() * CHARS.length)], x, y - FONT_SIZE);
         }
@@ -1451,7 +1468,9 @@
       document.body.appendChild(overlay);
     }
 
+    var MAX_EMOJIS = isMobile ? 12 : 40;
     function spawnEmoji() {
+      if (activeEmojis.length >= MAX_EMOJIS) return;
       var el = document.createElement('div');
       el.className = 'emoji-target';
       el.textContent = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
@@ -1472,8 +1491,11 @@
         maybeShowHorrorText();
         var r = el.getBoundingClientRect();
         var _cx = r.left + r.width/2, _cy = r.top + r.height/2;
-        if (Math.random() < 0.5) spawnZombieBurst(_cx, _cy);
-        else spawnZombie2Burst(_cx, _cy);
+        // on mobile, only 40% chance of zombie burst to reduce DOM load
+        if (!isMobile || Math.random() < 0.4) {
+          if (Math.random() < 0.5) spawnZombieBurst(_cx, _cy);
+          else spawnZombie2Burst(_cx, _cy);
+        }
         if (!hardcoreMode && Math.random() < 0.30) spawnGrenade();
         removeEmoji(el);
       });
@@ -1587,7 +1609,8 @@
         timeLeft: 20000,
         lastTs:   null
       };
-      for (var i = 0; i < 35; i++) {
+      var segCount = isMobile ? 18 : 35;
+      for (var i = 0; i < segCount; i++) {
         snake.segments.push({ x: snake.x, y: snake.y });
       }
       snake.target = pickSnakeTarget();
@@ -1629,7 +1652,8 @@
       snake.y = Math.max(0, Math.min(snakeCanvas.height, snake.y + snake.vy));
 
       snake.segments.unshift({ x: snake.x, y: snake.y });
-      if (snake.segments.length > 35) snake.segments.pop();
+      var maxSegs = isMobile ? 18 : 35;
+      if (snake.segments.length > maxSegs) snake.segments.pop();
 
       // collision — read style.left/top directly, check 6 segments for tunneling
       var checkSegs = Math.min(6, snake.segments.length);
@@ -1657,7 +1681,7 @@
       }
 
       // draw glowing body
-      sctx.shadowBlur  = 18;
+      sctx.shadowBlur  = isMobile ? 0 : 18;
       sctx.shadowColor = '#ff2200';
       for (var j = snake.segments.length - 1; j >= 0; j--) {
         var seg = snake.segments[j];
@@ -1676,7 +1700,7 @@
       var py    = -Math.cos(ha) * 4;
       var fx    = Math.cos(ha) * 7;
       var fy    = Math.sin(ha) * 7;
-      sctx.shadowBlur  = 8;
+      sctx.shadowBlur  = isMobile ? 0 : 8;
       sctx.shadowColor = '#ff0000';
       sctx.fillStyle   = '#ffffff';
       [[px,py],[-px,-py]].forEach(function(o) {
@@ -1708,7 +1732,7 @@
       spawnEmoji();
       spawnEmoji();
     }
-    setInterval(spawnBatch, isMobile ? 450 : 700);
+    setInterval(spawnBatch, isMobile ? 600 : 700);
 
     var ts = document.getElementById('timestamp');
     function tick() {
@@ -1900,6 +1924,7 @@
     window.addEventListener('resize', debounce(resizeTrail, 100));
 
     document.addEventListener('mousemove', function(e) {
+      if (isMobile) return;  // trail canvas hidden on mobile
       if (Math.random() < 0.6) {
         bloodDrops.push({
           x:     e.clientX - (e.clientX % FONT_SIZE),
@@ -1912,8 +1937,8 @@
 
     var bloodFrameSkip = 0;
     function animateBlood() {
-      // on mobile skip every other frame
-      if (isMobile) { bloodFrameSkip++; if (bloodFrameSkip % 2) { requestAnimationFrame(animateBlood); return; } }
+      // on mobile trail canvas is hidden — skip entirely
+      if (isMobile) return;
       bloodPhase += 0.07;
       // flash: alternate between showing blood and showing matrix clearly
       var flash = 0.65 + Math.sin(bloodPhase) * 0.35;
@@ -1962,8 +1987,10 @@
 
     var goreInterval = null;
     var goreElements = [];
+    var MAX_GORE = isMobile ? 30 : 150;
 
     function spawnDrip() {
+      if (goreElements.length >= MAX_GORE) return;
       // depth layer: 0=near(sharp/large), 1=mid, 2=far(blurry/small)
       var depth  = Math.floor(Math.random() * 3);
       var blurPx = [0, 1.2, 3.5][depth];
@@ -1982,6 +2009,10 @@
       // streak: cylindrical 3D — highlight left edge, dark right edge
       var streak = document.createElement('div');
       streak.className = 'blood-drip';
+      if (isMobile) {
+        streak.style.cssText = 'left:'+x+'px;width:'+w+'px;height:'+h+'px;z-index:'+zIdx+
+          ';background:rgba('+baseR+',0,0,1);border-radius:0 0 40% 30%;animation-duration:'+dur+'s';
+      } else {
       streak.style.cssText = [
         'left:'   + x + 'px',
         'width:'  + w + 'px',
@@ -1997,6 +2028,7 @@
         blurPx > 0 ? 'filter:blur(' + blurPx + 'px)' : '',
         'animation-duration:' + dur + 's'
       ].filter(Boolean).join(';');
+      }
       document.body.appendChild(streak);
       goreElements.push(streak);
 
@@ -2004,6 +2036,10 @@
       var ds = (w * 1.9 + Math.random() * w * 1.1) * (fresh ? 1.1 : 0.85);
       var drop = document.createElement('div');
       drop.className = 'blood-drop';
+      if (isMobile) {
+        drop.style.cssText = 'left:'+(x-ds*0.12)+'px;top:'+(h*0.82)+'px;width:'+ds+'px;height:'+(ds*1.0)+'px;z-index:'+(zIdx+1)+
+          ';background:rgba('+baseR+',0,0,1);border-radius:50%;animation-duration:'+(dur*1.12)+'s';
+      } else {
       drop.style.cssText = [
         'left:' + (x - ds * 0.12) + 'px',
         'top:'  + (h * 0.82) + 'px',
@@ -2024,6 +2060,7 @@
         blurPx > 0 ? 'filter:blur(' + (blurPx*0.55) + 'px)' : '',
         'animation-duration:' + (dur * 1.12) + 's'
       ].filter(Boolean).join(';');
+      }
       document.body.appendChild(drop);
       goreElements.push(drop);
 
@@ -2037,6 +2074,7 @@
     }
 
     function spawnSplat() {
+      if (goreElements.length >= MAX_GORE) return;
       var depth  = Math.floor(Math.random() * 3);
       var blurPx = [0, 1.6, 4.2][depth];
       var scale  = [1.0, 0.62, 0.36][depth];
@@ -2057,6 +2095,10 @@
 
       var el = document.createElement('div');
       el.className = 'blood-splat';
+      if (isMobile) {
+        el.style.cssText = 'left:'+x+'px;top:'+y+'px;width:'+size+'px;height:'+(size*hRat)+'px;z-index:'+zIdx+
+          ';border-radius:'+borderRad+';background:rgba('+baseR+',0,0,0.95);animation-duration:'+dur+'s';
+      } else {
       el.style.cssText = [
         'left:'   + x + 'px',
         'top:'    + y + 'px',
@@ -2079,11 +2121,12 @@
         blurPx > 0 ? 'filter:blur(' + blurPx + 'px)' : '',
         'animation-duration:' + dur + 's'
       ].filter(Boolean).join(';');
+      }
       document.body.appendChild(el);
       goreElements.push(el);
 
-      // satellite micro-droplets scattered around large splatters
-      if (size > 45 && Math.random() < 0.65) {
+      // satellite micro-droplets scattered around large splatters (skip on mobile)
+      if (!isMobile && size > 45 && Math.random() < 0.65) {
         var numSats = 2 + Math.floor(Math.random() * 5);
         for (var s = 0; s < numSats; s++) {
           (function(delay) {
@@ -2133,7 +2176,7 @@
         var nd = Math.floor(Math.random() * (isMobile ? 2 : 3));
         for (var k = 0; k <= nd; k++) if (Math.random() < (isMobile ? 0.4 : 0.82)) spawnDrip();
         if (Math.random() < (isMobile ? 0.3 : 0.68)) spawnSplat();
-      }, isMobile ? 500 : 200);
+      }, isMobile ? 800 : 200);
     }
 
     function stopBloodGore() {
@@ -2189,7 +2232,7 @@
     var activeBombs = [];
 
     function spawnBombs() {
-      var count = 3 + Math.floor(Math.random() * 4);
+      var count = isMobile ? (2 + Math.floor(Math.random() * 2)) : (3 + Math.floor(Math.random() * 4));
       for (var bi = 0; bi < count; bi++) {
         (function(delay) {
           setTimeout(spawnOneBomb, delay);
@@ -2200,6 +2243,7 @@
     function spawnOneBomb() {
       if (raceOver) return;
       if (battleMode) return;
+      if (isMobile && activeBombs.length >= 3) return;
       var el = document.createElement('div');
       el.className = 'bomb-target';
       el.textContent = '\uD83D\uDCA3';
@@ -2607,9 +2651,9 @@
           setTimeout(function(){var a=document.getElementById('age-gate');if(a&&a.style.display!=='none')TYPES[Math.floor(Math.random()*TYPES.length)]();},d1);
           if(Math.random()<0.5)setTimeout(function(){var a=document.getElementById('age-gate');if(a&&a.style.display!=='none')TYPES[Math.floor(Math.random()*TYPES.length)]();},d2);
         }
-        setTimeout(tick, 260+Math.random()*1600);
+        setTimeout(tick, isMobile ? (600+Math.random()*2400) : (260+Math.random()*1600));
       }
-      setTimeout(tick, 400+Math.random()*800);
+      setTimeout(tick, isMobile ? (800+Math.random()*1200) : (400+Math.random()*800));
     })();
 
     // ── ZOMBIE BURST (main screen emoji click) ────────────────────────────
