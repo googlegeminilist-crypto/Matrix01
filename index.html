@@ -1060,9 +1060,7 @@
         ageInput.focus();
         return;
       }
-      var am = document.getElementById('age-music');
-      if (am) { am.pause(); am.currentTime = 0; }
-      if (window._stopThunder) window._stopThunder();
+      if (window._stopAllAgeAudio) window._stopAllAgeAudio();
       ageGate.style.display = 'none';
       document.getElementById('overlay').style.display = 'none';
       bgMusic.currentTime = 0;
@@ -2375,6 +2373,13 @@
       }
       window._stopThunder = stopThunder;
 
+      // kill ALL age-page audio (voiceovers, music, thunder)
+      window._stopAllAgeAudio = function() {
+        stopMusic();
+        stopThunder();
+        villainIntro.pause(); villainIntro.currentTime = 0;
+      };
+
       function startMusic() {
         ageAudio.play().then(function() {
           ageMusOn = true;
@@ -2426,11 +2431,7 @@
         }
       });
 
-      // stop when entering the site
-      document.getElementById('age-btn').addEventListener('click', function() {
-        var val = parseInt(document.getElementById('age-input').value, 10);
-        if (!isNaN(val) && val >= 18) stopMusic();
-      });
+      // age-page audio is now stopped via window._stopAllAgeAudio() in checkAge()
     })();
     // ── AGE SCREEN HORROR FLASHES (lightning + laser + DOF) ─────────────
     (function() {
