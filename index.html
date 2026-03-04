@@ -2166,15 +2166,18 @@
       window._stopThunder = stopThunder;
 
       function startMusic() {
-        ageAudio.play().catch(function(){});
-        startThunder();
-        if (!introPlayed) {
-          introPlayed = true;
-          villainIntro.play().catch(function(){});
-        }
-        ageMusOn = true;
-        ageMusBtn.classList.remove('muted');
-        ageMusBtn.innerHTML = '&#9834;';
+        ageAudio.play().then(function() {
+          ageMusOn = true;
+          ageMusBtn.classList.remove('muted');
+          ageMusBtn.innerHTML = '&#9834;';
+          startThunder();
+          if (!introPlayed) {
+            introPlayed = true;
+            villainIntro.play().catch(function(){});
+          }
+        }).catch(function(){
+          // autoplay blocked — ageMusOn stays false so click handler will retry
+        });
       }
 
       function stopMusic() {
@@ -2191,13 +2194,12 @@
       // try autoplay immediately
       startMusic();
 
-      // first interaction anywhere on the age gate starts music if blocked
+      // any click on the age gate starts music if not already playing
       document.getElementById('age-gate').addEventListener('click', function() {
-        if (!interacted && !ageMusOn) {
-          interacted = true;
+        if (!ageMusOn) {
           startMusic();
         }
-      }, { once: false });
+      });
 
       // toggle button
       ageMusBtn.addEventListener('click', function(e) {
