@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Matrix01</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💀</text></svg>">
   <link rel="preconnect" href="https://www.googletagmanager.com">
   <link rel="dns-prefetch" href="https://www.googletagmanager.com">
   <link rel="preload" as="image" href="cool dool.png">
@@ -23,10 +24,10 @@
       height: 100%;
       background: #000;
       overflow: hidden;
-      cursor: none;
     }
 
-    button, input, a { cursor: none; }
+    body.game-active { cursor: none; }
+    body.game-active button, body.game-active input, body.game-active a { cursor: none; }
 
     #cursor-canvas {
       position: fixed;
@@ -1080,6 +1081,7 @@
       for (var d = 0; d < ageDrips.length; d++) ageDrips[d].remove();
       ageGate.style.display = 'none';
       document.getElementById('overlay').style.display = 'none';
+      document.body.classList.add('game-active');
       bgMusic.currentTime = 0;
       bgMusic.play().catch(function(){});
       musicOn = true;
