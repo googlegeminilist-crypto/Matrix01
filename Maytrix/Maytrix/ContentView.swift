@@ -433,9 +433,9 @@ struct AgeGateView: View {
         "I warn you stranger,", "you are about to enter", "your worst nightmare.", "",
         "Sounds that you will fear,", "sounds that will chase you",
         "forever — so go ahead,", "drink your beer.",
-        "It might be your last", "if you chose to enter here.", "",
+        "It might be your last", "if you choose to enter here.", "",
         "You enter at your own risk.", "So clench your fist,",
-        "don't get so scared you", "fall and crack your disk.", "",
+        "don't get so scared you", "fall and crack your disc.", "",
         "This is just a warning", "to all who dare enter.",
         "You have been warned.", "You enter at your own risk."
     ]
@@ -679,8 +679,8 @@ struct AgeGateView: View {
         VStack(alignment: .leading, spacing: 2) {
             ForEach(warningLines.indices, id: \.self) { i in
                 Text(warningLines[i].isEmpty ? " " : warningLines[i])
-                    .font(.custom("Courier New", size: 10))
-                    .foregroundColor(Color(red: 0.8, green: 0.04, blue: 0))
+                    .font(.custom("Courier New", size: 13))
+                    .foregroundColor(Color(red: 0, green: 1, blue: 0.25))
             }
         }
         .offset(x: dx, y: dy)
