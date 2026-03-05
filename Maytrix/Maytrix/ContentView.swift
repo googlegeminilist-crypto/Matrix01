@@ -1456,7 +1456,7 @@ struct MainGameView: View {
             }
             .onReceive(emojiTick) { _ in
                 guard !game.raceOver else { return }
-                for _ in 0..<3 { spawnEmoji(size: geo.size) }
+                for _ in 0..<5 { spawnEmoji(size: geo.size) }
             }
             .onReceive(clockTick) { _ in now = Date() }
         }
@@ -1525,7 +1525,7 @@ struct MainGameView: View {
                 y: max(0, min(size.height - 40, game.ghostPos.y + (dy/dist)*spd + cos(game.ghostFloatT*0.7)*0.5)))
         }
         if dist < 45 {
-            game.ghostScore += 5
+            game.ghostScore += 2
             game.flash("BOO!", at: CGPoint(x: game.ghostPos.x, y: game.ghostPos.y - 20))
             game.checkRace()
             game.emojis.removeAll { $0.id == tid }
@@ -1631,7 +1631,7 @@ struct MainGameView: View {
     // MARK: - Spawners
 
     private func spawnEmoji(size: CGSize) {
-        guard game.emojis.count < 15 else { return }
+        guard game.emojis.count < 35 else { return }
         let m: CGFloat = 60
         game.emojis.append(EmojiTarget(
             pos: CGPoint(x: m + CGFloat.random(in: 0...(max(1, size.width  - m*2))),
