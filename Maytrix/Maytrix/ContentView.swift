@@ -1347,12 +1347,12 @@ struct MainGameView: View {
                             .font(.custom("Courier New", size: 13))
                             .foregroundColor(Color(red:0.67,green:1,blue:0.87))
                             .shadow(color: Color(red:0.33,green:1,blue:0.67), radius: 6)
-                            .padding(.leading, 20).padding(.top, geo.safeAreaInsets.top + 8)
+                            .padding(.leading, 20).padding(.top, geo.safeAreaInsets.top + 36)
                         Spacer()
                         Text("SCORE: \(game.playerScore)")
                             .font(.custom("Courier New", size: 13))
                             .foregroundColor(Color(red:0,green:0.67,blue:0.16))
-                            .padding(.trailing, 20).padding(.top, geo.safeAreaInsets.top + 8)
+                            .padding(.trailing, 20).padding(.top, geo.safeAreaInsets.top + 36)
                     }
                     Spacer()
                     HStack {
