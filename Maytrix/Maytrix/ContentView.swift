@@ -366,13 +366,14 @@ final class GameState: ObservableObject {
 
 struct ContentView: View {
     @StateObject private var audio = AudioManager()
-    @State private var ageCleared = false
-    @State private var storyDone  = false
+    @State private var ageCleared    = false
+    @State private var storyDone     = false
+    @State private var hardcoreMode  = false
 
     var body: some View {
         Group {
             if ageCleared && storyDone {
-                MainGameView(onHome: {
+                MainGameView(hardcoreMode: hardcoreMode, onHome: {
                     audio.exitGame()
                     ageCleared = false
                     storyDone  = false
@@ -382,7 +383,7 @@ struct ContentView: View {
                     storyDone = true
                 })
             } else {
-                AgeGateView(onEnter: {
+                AgeGateView(hardcoreMode: $hardcoreMode, onEnter: {
                     audio.enterGame()
                     ageCleared = true
                 })
@@ -420,6 +421,7 @@ private struct BloodSplatter: Identifiable {
 }
 
 struct AgeGateView: View {
+    @Binding var hardcoreMode: Bool
     let onEnter: () -> Void
     @EnvironmentObject private var audio: AudioManager
 
@@ -649,6 +651,20 @@ struct AgeGateView: View {
                 .padding(.horizontal, 18).padding(.vertical, 7)
                 .background(Color.black)
                 .overlay(Rectangle().stroke(Color(red: 0, green: 0.67, blue: 0.16), lineWidth: 1))
+
+            // Hardcore mode toggle
+            Button(action: { hardcoreMode.toggle() }) {
+                Text(hardcoreMode ? "[X] HARDCORE MODE" : "[ ] HARDCORE MODE")
+                    .font(.custom("Courier New", size: 11))
+                    .foregroundColor(Color(red: 0, green: 1, blue: 0.25))
+            }
+            .padding(.top, 10)
+
+            Text("No grenades. No snake.\nPure skill. Click box to toggle.")
+                .font(.custom("Courier New", size: 9))
+                .foregroundColor(Color(red: 0, green: 0.5, blue: 0.12))
+                .multilineTextAlignment(.leading)
+                .padding(.top, 2)
 
             Spacer()
         }
@@ -1019,6 +1035,7 @@ struct StoryView: View {
 // MARK: - Main Game
 
 struct MainGameView: View {
+    let hardcoreMode: Bool
     let onHome: () -> Void
     @StateObject private var rain = MatrixRain()
     @StateObject private var game = GameState()
@@ -1575,8 +1592,8 @@ struct MainGameView: View {
         game.checkRace()
         game.maybeHorror()
         audio.maybePlaySpooky()
-        if game.playerScore % 100 == 0 { startSnake(size: size) }
-        if Double.random(in: 0...1) < 0.30 { spawnGrenade(size: size) }
+        if !hardcoreMode && game.playerScore % 100 == 0 { startSnake(size: size) }
+        if !hardcoreMode && Double.random(in: 0...1) < 0.30 { spawnGrenade(size: size) }
         game.emojis.removeAll { $0.id == e.id }
     }
 
