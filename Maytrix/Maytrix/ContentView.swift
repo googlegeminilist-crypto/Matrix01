@@ -974,7 +974,7 @@ struct StoryView: View {
             } else {
                 // Finished typing this story — pause then advance
                 pausing = true
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 15.0) {
                     withAnimation(.easeOut(duration: 0.6)) { textOpacity = 0 }
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
                         currentStory += 1
