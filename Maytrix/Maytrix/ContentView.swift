@@ -26,6 +26,7 @@ final class AudioManager: ObservableObject {
     private var shotgunPlayer:    AVAudioPlayer?
     private var fourVoicesPlayer: AVAudioPlayer?
     private var grenadePlayer:    AVAudioPlayer?
+    private var storyMusicPlayer: AVAudioPlayer?
 
     private var thunderOn         = false
     private var thunderGapTask:   DispatchWorkItem?
@@ -46,8 +47,10 @@ final class AudioManager: ObservableObject {
         shotgunPlayer    = load("kakaist-sound-shotgun-sfx-318127.mp3")
         fourVoicesPlayer = load("freesound_community-four_voices_whispering_2_wecho-6755.mp3")
         grenadePlayer    = load("grenade-sound.mp3")
+        storyMusicPlayer = load("Untitled 6.mp3")
 
         bgPlayer?.numberOfLoops       = -1;  bgPlayer?.volume       = 0.50
+        storyMusicPlayer?.numberOfLoops = -1; storyMusicPlayer?.volume = 0.60
         ageMusicPlayer?.numberOfLoops = -1;  ageMusicPlayer?.volume = 0.75
         villainPlayer?.volume  = 0.80
         thunderPlayer?.volume  = 0.30
@@ -154,8 +157,18 @@ final class AudioManager: ObservableObject {
         }
     }
 
+    // MARK: Story music
+    func startStoryMusic() {
+        storyMusicPlayer?.currentTime = 0
+        storyMusicPlayer?.play()
+    }
+    func stopStoryMusic() {
+        storyMusicPlayer?.pause()
+        storyMusicPlayer?.currentTime = 0
+    }
+
     // MARK: Main game audio
-    func enterGame() { stopAgeMusic(); startBgMusic(); startMainThunder() }
+    func enterGame() { stopAgeMusic(); stopStoryMusic(); startBgMusic(); startMainThunder() }
 
     func exitGame() { stopBgMusic(); stopThunder(); startAgeMusic() }
 
@@ -380,11 +393,14 @@ struct ContentView: View {
                 })
             } else if ageCleared {
                 StoryView(onComplete: {
+                    audio.stopStoryMusic()
+                    audio.enterGame()
                     storyDone = true
                 })
             } else {
                 AgeGateView(hardcoreMode: $hardcoreMode, onEnter: {
-                    audio.enterGame()
+                    audio.stopAgeMusic()
+                    audio.startStoryMusic()
                     ageCleared = true
                 })
             }
