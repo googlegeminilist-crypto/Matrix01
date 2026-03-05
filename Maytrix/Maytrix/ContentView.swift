@@ -1641,6 +1641,7 @@ struct MainGameView: View {
     }
 
     private func spawnGrenade(size: CGSize) {
+        guard game.grenades.isEmpty else { return }
         let m: CGFloat = 90
         game.grenades.append(GrenadeTarget(pos: CGPoint(
             x: m + CGFloat.random(in: 0...(max(1, size.width  - m*2))),
@@ -1660,12 +1661,11 @@ struct MainGameView: View {
     }
 
     private func spawnBombs(size: CGSize) {
-        for _ in 0..<Int.random(in: 3...6) {
-            game.bombs.append(BombTarget(
-                x: CGFloat.random(in: 60...(max(60, size.width - 60))),
-                y: -60,
-                speed: CGFloat.random(in: 1.8...4.0)))
-        }
+        guard game.bombs.isEmpty else { return }
+        game.bombs.append(BombTarget(
+            x: CGFloat.random(in: 60...(max(60, size.width - 60))),
+            y: -60,
+            speed: CGFloat.random(in: 1.8...4.0)))
     }
 
     private func scheduleBgCycle(size: CGSize) {
