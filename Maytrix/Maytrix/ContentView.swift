@@ -1609,7 +1609,7 @@ struct MainGameView: View {
         game.maybeHorror()
         audio.maybePlaySpooky()
         if !hardcoreMode && game.playerScore % 100 == 0 { startSnake(size: size) }
-        if !hardcoreMode && Double.random(in: 0...1) < 0.30 { spawnGrenade(size: size) }
+        if !hardcoreMode && Double.random(in: 0...1) < 0.10 { spawnGrenade(size: size) }
         game.emojis.removeAll { $0.id == e.id }
     }
 
@@ -1661,11 +1661,12 @@ struct MainGameView: View {
     }
 
     private func spawnBombs(size: CGSize) {
-        guard game.bombs.isEmpty else { return }
-        game.bombs.append(BombTarget(
-            x: CGFloat.random(in: 60...(max(60, size.width - 60))),
-            y: -60,
-            speed: CGFloat.random(in: 1.8...4.0)))
+        for _ in 0..<Int.random(in: 4...8) {
+            game.bombs.append(BombTarget(
+                x: CGFloat.random(in: 60...(max(60, size.width - 60))),
+                y: -60,
+                speed: CGFloat.random(in: 1.8...4.0)))
+        }
     }
 
     private func scheduleBgCycle(size: CGSize) {
