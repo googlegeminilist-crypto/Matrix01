@@ -868,6 +868,7 @@ struct StoryView: View {
     @State private var charIndex     = 0
     @State private var textOpacity   = 1.0
     @State private var pausing       = false
+    @State private var dollFlash: Double = 0
 
     private let typeTick = Timer.publish(every: 0.04, on: .main, in: .common).autoconnect()
     private let rainTick = Timer.publish(every: 1/30, on: .main, in: .common).autoconnect()
@@ -950,6 +951,25 @@ struct StoryView: View {
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 32)
                         .opacity(textOpacity)
+
+                    // Doll head with DOF — flashes in and out
+                    ZStack {
+                        Image("dollhead").resizable().scaledToFit()
+                            .frame(width: geo.size.width * 0.44)
+                            .blur(radius: 18).opacity(0.15)
+                        Image("dollhead").resizable().scaledToFit()
+                            .frame(width: geo.size.width * 0.40)
+                            .blur(radius: 7).opacity(0.35)
+                        Image("dollhead").resizable().scaledToFit()
+                            .frame(width: geo.size.width * 0.37)
+                            .blur(radius: 2).opacity(0.65)
+                        Image("dollhead").resizable().scaledToFit()
+                            .frame(width: geo.size.width * 0.34)
+                    }
+                    .shadow(color: .red.opacity(0.3), radius: 16)
+                    .opacity(max(0, sin(dollFlash)) * textOpacity)
+                    .padding(.top, 20)
+
                     Spacer()
 
                     Text("TAP TO SKIP")
@@ -960,6 +980,7 @@ struct StoryView: View {
             }
             .onReceive(rainTick) { _ in
                 rain.tick(width: geo.size.width, height: geo.size.height)
+                dollFlash += 0.07
             }
         }
         .onReceive(typeTick) { _ in
