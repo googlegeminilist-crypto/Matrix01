@@ -334,7 +334,7 @@ final class GameState: ObservableObject {
     private let horrorTexts = [
         "The dark one will destroy your soul inside the horror train.\nHe will cut away at your brain.\nYour heart will be his supper.\nYou will be in pain — you will be his dinner.",
         "Before the dark one kills you, he will feed you nightmares.\nYou will dream horrors beyond your imagination.\nTears of blood will fall down your face for years.\nUntil you die, you will be trapped in a nightmare.",
-        "He lives inside the dole.\nHe has possessed the dole — it's where it hides its soul.\nIf you find it and kill it, you might live to tell the tale.\nBut be warned, no one has survived — you will fail."
+        "He lives inside the doll.\nHe has possessed the doll — it's where it hides its soul.\nIf you find it and kill it, you might live to tell the tale.\nBut be warned, no one has survived — you will fail."
     ]
     private let emojiList = ["😠","😊","😢","😭","😲","😂","😤","😡"]
 
@@ -860,7 +860,7 @@ struct StoryView: View {
     private let stories = [
         "The dark one will destroy your soul inside the horror train.\nHe will cut away at your brain.\nYour heart will be his supper.\nYou will be in pain — you will be his dinner.",
         "Before the dark one kills you, he will feed you nightmares.\nYou will dream horrors beyond your imagination.\nTears of blood will fall down your face for years.\nUntil you die, you will be trapped in a nightmare.",
-        "He lives inside the dole.\nHe has possessed the dole — it's where it hides its soul.\nIf you find it and kill it, you might live to tell the tale.\nBut be warned, no one has survived — you will fail."
+        "He lives inside the doll.\nHe has possessed the doll — it's where it hides its soul.\nIf you find it and kill it, you might live to tell the tale.\nBut be warned, no one has survived — you will fail."
     ]
 
     @State private var currentStory  = 0
