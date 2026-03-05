@@ -955,16 +955,16 @@ struct StoryView: View {
                     // Doll head with DOF — flashes in and out
                     ZStack {
                         Image("dollhead").resizable().scaledToFit()
-                            .frame(width: geo.size.width * 0.44)
-                            .blur(radius: 18).opacity(0.15)
+                            .frame(width: geo.size.width * 0.72)
+                            .blur(radius: 22).opacity(0.15)
                         Image("dollhead").resizable().scaledToFit()
-                            .frame(width: geo.size.width * 0.40)
-                            .blur(radius: 7).opacity(0.35)
+                            .frame(width: geo.size.width * 0.66)
+                            .blur(radius: 9).opacity(0.35)
                         Image("dollhead").resizable().scaledToFit()
-                            .frame(width: geo.size.width * 0.37)
-                            .blur(radius: 2).opacity(0.65)
+                            .frame(width: geo.size.width * 0.60)
+                            .blur(radius: 3).opacity(0.65)
                         Image("dollhead").resizable().scaledToFit()
-                            .frame(width: geo.size.width * 0.34)
+                            .frame(width: geo.size.width * 0.55)
                     }
                     .shadow(color: .red.opacity(0.3), radius: 16)
                     .opacity(max(0, sin(dollFlash)) * textOpacity)
