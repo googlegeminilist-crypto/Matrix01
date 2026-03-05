@@ -911,8 +911,37 @@ struct StoryView: View {
                 Color.black.opacity(0.6).ignoresSafeArea()
 
                 // Story text
-                VStack {
-                    Spacer()
+                VStack(spacing: 0) {
+                    // Ghost image with 3D depth-of-field
+                    ZStack {
+                        // Layer 1: heavy blur — far background haze
+                        Image("ghostshadow")
+                            .resizable().scaledToFit()
+                            .frame(maxWidth: geo.size.width * 0.92)
+                            .blur(radius: 22)
+                            .opacity(0.18)
+                        // Layer 2: medium blur — mid depth
+                        Image("ghostshadow")
+                            .resizable().scaledToFit()
+                            .frame(maxWidth: geo.size.width * 0.86)
+                            .blur(radius: 10)
+                            .opacity(0.4)
+                        // Layer 3: light blur — near depth
+                        Image("ghostshadow")
+                            .resizable().scaledToFit()
+                            .frame(maxWidth: geo.size.width * 0.82)
+                            .blur(radius: 3)
+                            .opacity(0.7)
+                        // Layer 4: sharp centre — focal point
+                        Image("ghostshadow")
+                            .resizable().scaledToFit()
+                            .frame(maxWidth: geo.size.width * 0.78)
+                    }
+                    .shadow(color: Color(red: 0, green: 1, blue: 0.25).opacity(0.25), radius: 24)
+                    .opacity(textOpacity * 0.9)
+                    .padding(.top, geo.size.height * 0.05)
+                    .padding(.bottom, 12)
+
                     Text(displayedText)
                         .font(.custom("Courier New", size: 18))
                         .foregroundColor(Color(red: 0, green: 1, blue: 0.25))
