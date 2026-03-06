@@ -3086,8 +3086,10 @@
 
     function generatePlatforms() {
       platforms = [];
-      // Ground
-      platforms.push({ x: 0, y: l2Canvas.height - 40, w: 99999, h: 40, type: 'ground' });
+      // No ground — fall = game over
+      // Starting platform so player has somewhere to land
+      platforms.push({ x: 0, y: l2Canvas.height - 120, w: 180, h: 18, type: 'book',
+        title: 'START HERE', color: '#003322' });
 
       // Generate floating horror books — spaced for jumpable gaps
       var px = 200;
@@ -3177,24 +3179,7 @@
         var sx = p.x - scrollX;
         if (sx + p.w < -50 || sx > l2Canvas.width + 50) continue;
 
-        if (p.type === 'ground') {
-          // Ground — dark green gradient
-          var grd = l2Ctx.createLinearGradient(0, p.y, 0, p.y + p.h);
-          grd.addColorStop(0, '#003300');
-          grd.addColorStop(1, '#001100');
-          l2Ctx.fillStyle = grd;
-          l2Ctx.fillRect(sx, p.y, Math.min(p.w, l2Canvas.width + 100), p.h);
-          // Top edge glow
-          l2Ctx.strokeStyle = '#00ff41';
-          l2Ctx.lineWidth = 2;
-          l2Ctx.shadowColor = '#00ff41';
-          l2Ctx.shadowBlur = 8;
-          l2Ctx.beginPath();
-          l2Ctx.moveTo(sx, p.y);
-          l2Ctx.lineTo(sx + Math.min(p.w, l2Canvas.width + 100), p.y);
-          l2Ctx.stroke();
-          l2Ctx.shadowBlur = 0;
-        } else {
+        {
           // Horror book image — 4 DOF layers
           var imgReady = bookImg.complete && bookImg.naturalWidth > 0;
           var bookDOF = [
@@ -3818,11 +3803,9 @@
       // Don't go left of start
       if (player.x < 0) player.x = 0;
 
-      // Fall off screen — respawn
-      if (player.y > l2Canvas.height + 100) {
-        player.x = scrollX + 100;
-        player.y = 0;
-        player.vy = 0;
+      // Fall off screen — game over
+      if (player.y > l2Canvas.height + 50) {
+        showL2GameOver();
       }
     }
 
@@ -3831,6 +3814,38 @@
       var targetX = player.x - l2Canvas.width * 0.3;
       if (targetX < 0) targetX = 0;
       scrollX += (targetX - scrollX) * 0.1;
+    }
+
+    // ── GAME OVER ──────────────────────────────────────────────────
+
+    function showL2GameOver() {
+      l2Active = false;
+      if (l2Raf) cancelAnimationFrame(l2Raf);
+      l2Music.pause();
+
+      var overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed;inset:0;z-index:970;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,0.92);font-family:"Courier New",monospace';
+
+      var title = document.createElement('div');
+      title.textContent = 'GAME OVER';
+      title.style.cssText = 'font-size:clamp(3rem,10vw,7rem);font-weight:700;color:#ff1100;letter-spacing:0.3em;text-shadow:0 0 20px #ff1100,0 0 60px #880000';
+
+      var sub = document.createElement('div');
+      sub.textContent = 'The pumpkin fell into the void. Score: ' + l2Score;
+      sub.style.cssText = 'margin-top:1.5rem;font-size:clamp(0.9rem,2.5vw,1.3rem);color:#aaa;letter-spacing:0.1em;text-align:center;padding:0 2rem';
+
+      var btn = document.createElement('button');
+      btn.textContent = 'TRY AGAIN';
+      btn.style.cssText = 'margin-top:2.5rem;padding:0.8rem 2.5rem;font-family:"Courier New",monospace;font-size:1.1rem;background:transparent;cursor:pointer;letter-spacing:0.2em;color:#ff1100;border:2px solid #ff1100;box-shadow:0 0 12px #ff1100';
+      btn.addEventListener('click', function() {
+        overlay.remove();
+        startLevel2();
+      });
+
+      overlay.appendChild(title);
+      overlay.appendChild(sub);
+      overlay.appendChild(btn);
+      document.getElementById('level2-screen').appendChild(overlay);
     }
 
     // ── GAME LOOP ──────────────────────────────────────────────────
@@ -3892,9 +3907,9 @@
       chapterOverlay.style.display = 'flex';
       chapterOverlay.style.opacity = '1';
 
-      // Reset player
-      player.x = 100;
-      player.y = l2Canvas.height - 140;
+      // Reset player — start on the first book
+      player.x = 80;
+      player.y = l2Canvas.height - 120 - player.h;
       player.vx = 0;
       player.vy = 0;
       player.onGround = false;
