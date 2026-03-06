@@ -3034,6 +3034,10 @@
       { scale: 1.00, blur: 0,  opacity: 0.70 }
     ];
 
+    // Book platform image
+    var bookImg = new Image();
+    bookImg.src = 'book-platform.png';
+
     var dollImg = new Image();
     dollImg.src = 'cooldool.png';
     var dollApparitions = [];
@@ -3066,17 +3070,36 @@
       }
     }
 
+    var BOOK_TITLES = [
+      'NECRONOMICON', 'BOOK OF SHADOWS', 'THE SHINING',
+      'DRACULA', 'FRANKENSTEIN', 'IT', 'CARRIE',
+      'PET SEMATARY', 'MISERY', 'THE EXORCIST',
+      'HELLRAISER', 'RING', 'THE OMEN', 'PSYCHO',
+      'ROSEMARY\'S BABY', 'GHOST STORY', 'HOUSE OF LEAVES',
+      'CORALINE', 'THE HAUNTING', 'SALEM\'S LOT',
+      'DEAD ZONE', 'AMITYVILLE', 'POLTERGEIST',
+      'EVIL DEAD', 'NIGHTMARE', 'DOLL HOUSE'
+    ];
+    var BOOK_COLORS = [
+      '#4a0000', '#2a0028', '#003322', '#1a1a00',
+      '#330011', '#0a0033', '#2a1500', '#001a1a'
+    ];
+
     function generatePlatforms() {
       platforms = [];
       // Ground
       platforms.push({ x: 0, y: l2Canvas.height - 40, w: 99999, h: 40, type: 'ground' });
 
-      // Generate floating platforms
+      // Generate floating horror books
       var px = 200;
       for (var i = 0; i < 80; i++) {
-        var pw = 80 + Math.random() * 120;
+        var pw = 90 + Math.random() * 110;
         var py = l2Canvas.height - 100 - Math.random() * (l2Canvas.height * 0.5);
-        platforms.push({ x: px, y: py, w: pw, h: 14, type: 'float' });
+        platforms.push({
+          x: px, y: py, w: pw, h: 18, type: 'book',
+          title: BOOK_TITLES[Math.floor(Math.random() * BOOK_TITLES.length)],
+          color: BOOK_COLORS[Math.floor(Math.random() * BOOK_COLORS.length)]
+        });
         px += 150 + Math.random() * 200;
       }
     }
@@ -3168,15 +3191,38 @@
           l2Ctx.stroke();
           l2Ctx.shadowBlur = 0;
         } else {
-          // Floating platform — glowing green
-          l2Ctx.fillStyle = '#002200';
-          l2Ctx.fillRect(sx, p.y, p.w, p.h);
-          l2Ctx.strokeStyle = '#00ff41';
-          l2Ctx.lineWidth = 2;
-          l2Ctx.shadowColor = '#00ff41';
-          l2Ctx.shadowBlur = 10;
-          l2Ctx.strokeRect(sx, p.y, p.w, p.h);
-          l2Ctx.shadowBlur = 0;
+          // Horror book image — 4 DOF layers
+          var imgReady = bookImg.complete && bookImg.naturalWidth > 0;
+          var bookDOF = [
+            { scale: 1.30, blur: 16, opacity: 0.15 },
+            { scale: 1.18, blur: 8,  opacity: 0.30 },
+            { scale: 1.08, blur: 3,  opacity: 0.55 },
+            { scale: 1.00, blur: 0,  opacity: 1.00 }
+          ];
+          // Book image aspect ratio ~454:300 = 1.51
+          var bh = p.w / 1.51;
+          var by = p.y - bh + p.h + 4; // sit on top of collision line
+
+          for (var bl = 0; bl < bookDOF.length; bl++) {
+            var bL = bookDOF[bl];
+            var dw = p.w * bL.scale;
+            var dh = bh * bL.scale;
+            var dx = sx - (dw - p.w) / 2;
+            var dy = by - (dh - bh) / 2;
+
+            l2Ctx.save();
+            l2Ctx.globalAlpha = bL.opacity;
+            if (bL.blur > 0) l2Ctx.filter = 'blur(' + bL.blur + 'px)';
+
+            if (imgReady) {
+              l2Ctx.drawImage(bookImg, dx, dy, dw, dh);
+            } else {
+              l2Ctx.fillStyle = '#3a1a00';
+              l2Ctx.fillRect(dx, dy, dw, dh);
+            }
+
+            l2Ctx.restore();
+          }
         }
       }
     }
@@ -3227,7 +3273,7 @@
       // Try to place on a floating platform
       for (var i = 0; i < platforms.length; i++) {
         var p = platforms[i];
-        if (p.type === 'float' && p.x > player.x + 200 && p.x < player.x + l2Canvas.width) {
+        if (p.type === 'book' && p.x > player.x + 200 && p.x < player.x + l2Canvas.width) {
           if (Math.random() < 0.4) { ex = p.x + p.w / 2; ey = p.y - 30; break; }
         }
       }
