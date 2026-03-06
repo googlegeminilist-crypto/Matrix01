@@ -2997,10 +2997,15 @@
 
     // Keys
     var keys = {};
+    var shootCooldown = 0;
     window.addEventListener('keydown', function(e) {
       keys[e.code] = true;
       if (l2Active && (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'ArrowDown')) {
         e.preventDefault();
+      }
+      if (l2Active && e.code === 'KeyS' && shootCooldown <= 0) {
+        shootBolt();
+        shootCooldown = 12;
       }
     });
     window.addEventListener('keyup', function(e) { keys[e.code] = false; });
@@ -3009,6 +3014,14 @@
     var platforms = [];
     var scrollX = 0;
     var l2Score = 0;
+
+    // Enemies, gas balls, lightning bolts
+    var enemies = [];
+    var gasBalls = [];
+    var bolts = [];
+    var l2Score = 0;
+    var enemySpawnTimer = 0;
+    var ENEMY_EMOJIS = ['😠','😡','😤','🤬','👿'];
 
     // Matrix rain columns for background
     var rainCols = [];
@@ -3152,19 +3165,212 @@
       }
     }
 
+    // ── ENEMIES ─────────────────────────────────────────────────
+
+    function spawnEnemy() {
+      // Spawn ahead of player, on platforms or ground
+      var ex = player.x + l2Canvas.width * 0.6 + Math.random() * 300;
+      var ey = l2Canvas.height - 80; // default to ground
+      // Try to place on a floating platform
+      for (var i = 0; i < platforms.length; i++) {
+        var p = platforms[i];
+        if (p.type === 'float' && p.x > player.x + 200 && p.x < player.x + l2Canvas.width) {
+          if (Math.random() < 0.4) { ex = p.x + p.w / 2; ey = p.y - 30; break; }
+        }
+      }
+      enemies.push({
+        x: ex, y: ey, w: 30, h: 30,
+        emoji: ENEMY_EMOJIS[Math.floor(Math.random() * ENEMY_EMOJIS.length)],
+        hp: 1,
+        shootTimer: 60 + Math.floor(Math.random() * 60),
+        vx: (Math.random() < 0.5 ? -1 : 1) * (0.3 + Math.random() * 0.5)
+      });
+    }
+
+    function updateEnemies() {
+      enemySpawnTimer++;
+      // Spawn every ~2 seconds, max 8 on screen
+      if (enemySpawnTimer > 120 && enemies.length < 8) {
+        spawnEnemy();
+        enemySpawnTimer = 0;
+      }
+
+      for (var i = enemies.length - 1; i >= 0; i--) {
+        var e = enemies[i];
+        // Patrol movement
+        e.x += e.vx;
+
+        // Shoot gas at player
+        e.shootTimer--;
+        if (e.shootTimer <= 0) {
+          e.shootTimer = 80 + Math.floor(Math.random() * 80);
+          var dx = player.x - e.x;
+          var dy = player.y - e.y;
+          var dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 600 && dist > 0) {
+            gasBalls.push({
+              x: e.x, y: e.y,
+              vx: (dx / dist) * 3.5,
+              vy: (dy / dist) * 3.5,
+              life: 0, maxLife: 180,
+              r: 5
+            });
+          }
+        }
+
+        // Remove if too far behind camera
+        if (e.x < scrollX - 200) { enemies.splice(i, 1); }
+      }
+    }
+
+    function updateGasBalls() {
+      for (var i = gasBalls.length - 1; i >= 0; i--) {
+        var g = gasBalls[i];
+        g.x += g.vx;
+        g.y += g.vy;
+        g.life++;
+        if (g.life > g.maxLife) { gasBalls.splice(i, 1); continue; }
+
+        // Hit player?
+        var dx = (player.x + player.w / 2) - g.x;
+        var dy = (player.y + player.h / 2) - g.y;
+        if (dx * dx + dy * dy < 30 * 30) {
+          // Knock player back
+          player.vx += g.vx * 2;
+          player.vy = -6;
+          gasBalls.splice(i, 1);
+        }
+      }
+    }
+
+    function shootBolt() {
+      var dir = player.facing < 0 ? 1 : -1; // facing is flipped in draw
+      bolts.push({
+        x: player.x + player.w / 2 + dir * 20,
+        y: player.y + player.h / 2,
+        vx: dir * 12,
+        life: 0, maxLife: 40,
+        segments: []
+      });
+      // Generate jagged lightning segments
+      var b = bolts[bolts.length - 1];
+      var sx = 0;
+      var sy = 0;
+      b.segments.push({ x: sx, y: sy });
+      for (var j = 0; j < 6; j++) {
+        sx += dir * 14;
+        sy += (Math.random() - 0.5) * 16;
+        b.segments.push({ x: sx, y: sy });
+      }
+    }
+
+    function updateBolts() {
+      for (var i = bolts.length - 1; i >= 0; i--) {
+        var b = bolts[i];
+        b.x += b.vx;
+        b.life++;
+        if (b.life > b.maxLife) { bolts.splice(i, 1); continue; }
+
+        // Hit enemies?
+        for (var j = enemies.length - 1; j >= 0; j--) {
+          var e = enemies[j];
+          var dx = b.x - e.x;
+          var dy = b.y - e.y;
+          if (dx * dx + dy * dy < 40 * 40) {
+            enemies.splice(j, 1);
+            bolts.splice(i, 1);
+            l2Score++;
+            break;
+          }
+        }
+      }
+    }
+
+    function drawEnemies() {
+      l2Ctx.font = '28px serif';
+      l2Ctx.textAlign = 'center';
+      l2Ctx.textBaseline = 'middle';
+      for (var i = 0; i < enemies.length; i++) {
+        var e = enemies[i];
+        var sx = e.x - scrollX;
+        var sy = e.y;
+        if (sx < -50 || sx > l2Canvas.width + 50) continue;
+        // Red glow
+        l2Ctx.shadowColor = '#ff0000';
+        l2Ctx.shadowBlur = 12;
+        l2Ctx.fillText(e.emoji, sx, sy);
+        l2Ctx.shadowBlur = 0;
+      }
+      l2Ctx.textAlign = 'left';
+      l2Ctx.textBaseline = 'alphabetic';
+    }
+
+    function drawGasBalls() {
+      for (var i = 0; i < gasBalls.length; i++) {
+        var g = gasBalls[i];
+        var sx = g.x - scrollX;
+        var sy = g.y;
+        if (sx < -20 || sx > l2Canvas.width + 20) continue;
+        var fade = 1 - g.life / g.maxLife;
+        // Outer glow
+        l2Ctx.beginPath();
+        l2Ctx.arc(sx, sy, g.r + 4, 0, Math.PI * 2);
+        l2Ctx.fillStyle = 'rgba(0,200,0,' + (fade * 0.2) + ')';
+        l2Ctx.fill();
+        // Core
+        l2Ctx.beginPath();
+        l2Ctx.arc(sx, sy, g.r, 0, Math.PI * 2);
+        l2Ctx.fillStyle = 'rgba(50,255,50,' + (fade * 0.8) + ')';
+        l2Ctx.shadowColor = '#00ff00';
+        l2Ctx.shadowBlur = 8;
+        l2Ctx.fill();
+        l2Ctx.shadowBlur = 0;
+      }
+    }
+
+    function drawBolts() {
+      for (var i = 0; i < bolts.length; i++) {
+        var b = bolts[i];
+        var sx = b.x - scrollX;
+        var sy = b.y;
+        if (b.segments.length < 2) continue;
+
+        // 3 passes: thick glow, medium, sharp core
+        var passes = [
+          { width: 6, blur: 14, color: 'rgba(100,180,255,0.15)' },
+          { width: 3, blur: 6,  color: 'rgba(150,210,255,0.5)' },
+          { width: 1.2, blur: 0, color: 'rgba(220,240,255,1)' }
+        ];
+        for (var p = 0; p < passes.length; p++) {
+          l2Ctx.beginPath();
+          l2Ctx.moveTo(sx + b.segments[0].x, sy + b.segments[0].y);
+          for (var k = 1; k < b.segments.length; k++) {
+            l2Ctx.lineTo(sx + b.segments[k].x, sy + b.segments[k].y);
+          }
+          l2Ctx.strokeStyle = passes[p].color;
+          l2Ctx.lineWidth = passes[p].width;
+          l2Ctx.shadowColor = '#88ccff';
+          l2Ctx.shadowBlur = passes[p].blur;
+          l2Ctx.stroke();
+          l2Ctx.shadowBlur = 0;
+        }
+      }
+    }
+
     function drawHUD() {
       l2Ctx.font = '16px "Courier New", monospace';
       l2Ctx.fillStyle = '#00ff41';
       l2Ctx.shadowColor = '#00ff41';
       l2Ctx.shadowBlur = 6;
       l2Ctx.fillText('CHAPTER 2', 20, 30);
-      l2Ctx.fillText('DISTANCE: ' + Math.floor(scrollX / 10), 20, 52);
+      l2Ctx.fillText('SCORE: ' + l2Score, 20, 52);
+      l2Ctx.fillText('DISTANCE: ' + Math.floor(scrollX / 10), 20, 74);
       l2Ctx.shadowBlur = 0;
 
       // Controls hint
       l2Ctx.font = '12px "Courier New", monospace';
       l2Ctx.fillStyle = 'rgba(0,255,65,0.4)';
-      l2Ctx.fillText('ARROWS: move   SPACE: jump', 20, l2Canvas.height - 20);
+      l2Ctx.fillText('ARROWS: move   SPACE: jump   S: shoot lightning', 20, l2Canvas.height - 20);
     }
 
     // ── PHYSICS ────────────────────────────────────────────────────
@@ -3240,10 +3446,18 @@
       l2Ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
       l2Ctx.fillRect(0, 0, l2Canvas.width, l2Canvas.height);
 
+      if (shootCooldown > 0) shootCooldown--;
+
       drawRain();
       updatePlayer();
+      updateEnemies();
+      updateGasBalls();
+      updateBolts();
       updateCamera();
       drawPlatforms();
+      drawEnemies();
+      drawGasBalls();
+      drawBolts();
       drawPlayer();
       drawHUD();
 
@@ -3279,6 +3493,14 @@
       player.vy = 0;
       player.onGround = false;
       scrollX = 0;
+
+      // Reset enemies, gas, bolts, score
+      enemies = [];
+      gasBalls = [];
+      bolts = [];
+      l2Score = 0;
+      enemySpawnTimer = 0;
+      shootCooldown = 0;
 
       generatePlatforms();
 
