@@ -3023,6 +3023,18 @@
     var enemySpawnTimer = 0;
     var ENEMY_EMOJIS = ['😠','😡','😤','🤬','👿'];
 
+    // Doll apparition
+    var dollImg = new Image();
+    dollImg.src = 'cooldool.png';
+    var dollApparitions = [];
+    var dollSpawnTimer = 0;
+    var DOLL_DOF = [
+      { scale: 1.40, blur: 22, opacity: 0.15 },
+      { scale: 1.25, blur: 12, opacity: 0.30 },
+      { scale: 1.12, blur: 5,  opacity: 0.55 },
+      { scale: 1.00, blur: 0,  opacity: 1.00 }
+    ];
+
     // Matrix rain columns for background
     var rainCols = [];
     var rainCharSet = 'MATRIX01ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%';
@@ -3357,6 +3369,71 @@
       }
     }
 
+    // ── DOLL APPARITION ──────────────────────────────────────────
+
+    function updateDollApparitions() {
+      dollSpawnTimer++;
+      // Spawn every ~5-10 seconds
+      if (dollSpawnTimer > 300 + Math.random() * 300 && dollApparitions.length < 2) {
+        var dx = player.x + l2Canvas.width * (0.2 + Math.random() * 0.6);
+        var dy = l2Canvas.height * (0.15 + Math.random() * 0.5);
+        var baseSize = 140 + Math.random() * 120;
+        dollApparitions.push({
+          x: dx, y: dy,
+          w: baseSize, h: baseSize * 1.5,
+          life: 0,
+          maxLife: 120 + Math.floor(Math.random() * 90), // 2-3.5 seconds
+          wobble: Math.random() * Math.PI * 2
+        });
+        dollSpawnTimer = 0;
+      }
+
+      for (var i = dollApparitions.length - 1; i >= 0; i--) {
+        var d = dollApparitions[i];
+        d.life++;
+        d.wobble += 0.06;
+        if (d.life > d.maxLife) {
+          dollApparitions.splice(i, 1);
+        }
+      }
+    }
+
+    function drawDollApparitions() {
+      if (!dollImg.complete || dollImg.naturalWidth === 0) return;
+
+      for (var i = 0; i < dollApparitions.length; i++) {
+        var d = dollApparitions[i];
+        var sx = d.x - scrollX;
+        if (sx < -200 || sx > l2Canvas.width + 200) continue;
+
+        // Fade in/out
+        var fadeIn  = Math.min(1, d.life / 30);
+        var fadeOut = Math.min(1, (d.maxLife - d.life) / 30);
+        var masterAlpha = fadeIn * fadeOut;
+
+        // Wobble
+        var wobX = Math.sin(d.wobble) * 6;
+        var wobY = Math.cos(d.wobble * 0.7) * 4;
+
+        // Draw DOF layers
+        for (var j = 0; j < DOLL_DOF.length; j++) {
+          var L = DOLL_DOF[j];
+          var dw = d.w * L.scale;
+          var dh = d.h * L.scale;
+          var ddx = sx + wobX - (dw - d.w) / 2;
+          var ddy = d.y + wobY - (dh - d.h) / 2;
+
+          l2Ctx.save();
+          l2Ctx.globalAlpha = L.opacity * masterAlpha;
+          if (L.blur > 0) l2Ctx.filter = 'blur(' + L.blur + 'px)';
+
+          l2Ctx.drawImage(dollImg, ddx, ddy, dw, dh);
+          l2Ctx.restore();
+        }
+
+      }
+    }
+
     function drawHUD() {
       l2Ctx.font = '16px "Courier New", monospace';
       l2Ctx.fillStyle = '#00ff41';
@@ -3453,8 +3530,10 @@
       updateEnemies();
       updateGasBalls();
       updateBolts();
+      updateDollApparitions();
       updateCamera();
       drawPlatforms();
+      drawDollApparitions();
       drawEnemies();
       drawGasBalls();
       drawBolts();
@@ -3501,6 +3580,8 @@
       l2Score = 0;
       enemySpawnTimer = 0;
       shootCooldown = 0;
+      dollApparitions = [];
+      dollSpawnTimer = 0;
 
       generatePlatforms();
 
