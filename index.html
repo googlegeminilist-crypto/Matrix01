@@ -3370,58 +3370,82 @@
     // ── ENEMIES ─────────────────────────────────────────────────
 
     function spawnEnemy() {
-      // Spawn ahead of player, on platforms or ground
-      var ex = player.x + l2Canvas.width * 0.6 + Math.random() * 300;
-      var ey = l2Canvas.height - 80; // default to ground
-      // Try to place on a floating platform
+      // Spawn on a book platform ahead of the player
+      var placed = false;
       for (var i = 0; i < platforms.length; i++) {
         var p = platforms[i];
-        if (p.type === 'book' && p.x > player.x + 200 && p.x < player.x + l2Canvas.width) {
-          if (Math.random() < 0.4) { ex = p.x + p.w / 2; ey = p.y - 30; break; }
+        if (p.type === 'book' && p.x > player.x + 300 && p.x < player.x + l2Canvas.width + 200) {
+          // Don't stack zombies on the same book
+          var taken = false;
+          for (var j = 0; j < enemies.length; j++) {
+            if (Math.abs(enemies[j].x - (p.x + p.w / 2)) < 40) { taken = true; break; }
+          }
+          if (!taken && Math.random() < 0.5) {
+            enemies.push({
+              x: p.x + p.w / 2, y: p.y - 40,
+              w: 24, h: 40,
+              hp: 1,
+              shootTimer: 40 + Math.floor(Math.random() * 60),
+              facing: Math.random() < 0.5 ? -1 : 1,
+              armRaise: 0
+            });
+            placed = true;
+            break;
+          }
         }
       }
-      enemies.push({
-        x: ex, y: ey, w: 30, h: 30,
-        emoji: ENEMY_EMOJIS[Math.floor(Math.random() * ENEMY_EMOJIS.length)],
-        hp: 1,
-        shootTimer: 60 + Math.floor(Math.random() * 60),
-        vx: (Math.random() < 0.5 ? -1 : 1) * (0.3 + Math.random() * 0.5)
-      });
+      // Fallback: ground zombie
+      if (!placed) {
+        enemies.push({
+          x: player.x + l2Canvas.width * 0.7 + Math.random() * 200,
+          y: l2Canvas.height - 80,
+          w: 24, h: 40,
+          hp: 1,
+          shootTimer: 40 + Math.floor(Math.random() * 60),
+          facing: -1,
+          armRaise: 0
+        });
+      }
     }
 
     function updateEnemies() {
       enemySpawnTimer++;
-      // Spawn every ~2 seconds, max 8 on screen
-      if (enemySpawnTimer > 120 && enemies.length < 8) {
+      if (enemySpawnTimer > 100 && enemies.length < 8) {
         spawnEnemy();
         enemySpawnTimer = 0;
       }
 
       for (var i = enemies.length - 1; i >= 0; i--) {
         var e = enemies[i];
-        // Patrol movement
-        e.x += e.vx;
+        // Face the player
+        if (player.x < e.x) e.facing = -1; else e.facing = 1;
 
-        // Shoot gas at player
+        var dx = player.x - e.x;
+        var dy = player.y - e.y;
+        var dist = Math.sqrt(dx * dx + dy * dy);
+
+        // Raise arm when player is near
+        if (dist < 400) {
+          e.armRaise = Math.min(1, e.armRaise + 0.05);
+        } else {
+          e.armRaise = Math.max(0, e.armRaise - 0.03);
+        }
+
+        // Shoot fireball when player is close
         e.shootTimer--;
-        if (e.shootTimer <= 0) {
-          e.shootTimer = 80 + Math.floor(Math.random() * 80);
-          var dx = player.x - e.x;
-          var dy = player.y - e.y;
-          var dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist < 600 && dist > 0) {
-            gasBalls.push({
-              x: e.x, y: e.y,
-              vx: (dx / dist) * 3.5,
-              vy: (dy / dist) * 3.5,
-              life: 0, maxLife: 180,
-              r: 5
-            });
-          }
+        if (e.shootTimer <= 0 && dist < 500 && dist > 0) {
+          e.shootTimer = 70 + Math.floor(Math.random() * 60);
+          gasBalls.push({
+            x: e.x + e.facing * 15, y: e.y + 5,
+            vx: (dx / dist) * 5,
+            vy: (dy / dist) * 5,
+            life: 0, maxLife: 120,
+            r: 6
+          });
         }
 
         // Remove if too far behind camera
-        if (e.x < scrollX - 200) { enemies.splice(i, 1); }
+        if (e.x < scrollX - 300) { enemies.splice(i, 1); }
       }
     }
 
@@ -3489,22 +3513,124 @@
     }
 
     function drawEnemies() {
-      l2Ctx.font = '28px serif';
-      l2Ctx.textAlign = 'center';
-      l2Ctx.textBaseline = 'middle';
       for (var i = 0; i < enemies.length; i++) {
         var e = enemies[i];
         var sx = e.x - scrollX;
         var sy = e.y;
-        if (sx < -50 || sx > l2Canvas.width + 50) continue;
-        // Red glow
-        l2Ctx.shadowColor = '#ff0000';
-        l2Ctx.shadowBlur = 12;
-        l2Ctx.fillText(e.emoji, sx, sy);
+        if (sx < -60 || sx > l2Canvas.width + 60) continue;
+
+        var f = e.facing;
+        l2Ctx.save();
+
+        // ── HEAD — rotting green ──
+        l2Ctx.fillStyle = '#2a4a1a';
+        l2Ctx.shadowColor = 'rgba(50,120,30,0.5)';
+        l2Ctx.shadowBlur = 6;
+        l2Ctx.beginPath();
+        l2Ctx.ellipse(sx, sy, 10, 12, 0, 0, Math.PI * 2);
+        l2Ctx.fill();
         l2Ctx.shadowBlur = 0;
+
+        // Dark patches on face
+        l2Ctx.fillStyle = '#1a3010';
+        l2Ctx.beginPath();
+        l2Ctx.ellipse(sx - 3, sy - 2, 3, 2, 0.2, 0, Math.PI * 2);
+        l2Ctx.fill();
+
+        // Eyes — glowing red
+        l2Ctx.fillStyle = '#ff2200';
+        l2Ctx.shadowColor = '#ff0000';
+        l2Ctx.shadowBlur = 6;
+        l2Ctx.beginPath();
+        l2Ctx.arc(sx - 4 * f, sy - 3, 2, 0, Math.PI * 2);
+        l2Ctx.arc(sx + 2 * f, sy - 3, 2, 0, Math.PI * 2);
+        l2Ctx.fill();
+        l2Ctx.shadowBlur = 0;
+
+        // Mouth — jagged
+        l2Ctx.strokeStyle = '#0a0a00';
+        l2Ctx.lineWidth = 1.5;
+        l2Ctx.beginPath();
+        l2Ctx.moveTo(sx - 5, sy + 5);
+        l2Ctx.lineTo(sx - 2, sy + 3);
+        l2Ctx.lineTo(sx + 1, sy + 6);
+        l2Ctx.lineTo(sx + 4, sy + 3);
+        l2Ctx.lineTo(sx + 6, sy + 5);
+        l2Ctx.stroke();
+
+        // ── BODY — tattered ──
+        l2Ctx.fillStyle = '#3a2a1a';
+        l2Ctx.fillRect(sx - 7, sy + 11, 14, 18);
+        // Rips
+        l2Ctx.strokeStyle = '#1a1208';
+        l2Ctx.lineWidth = 1;
+        l2Ctx.beginPath();
+        l2Ctx.moveTo(sx - 3, sy + 14); l2Ctx.lineTo(sx - 1, sy + 22);
+        l2Ctx.moveTo(sx + 2, sy + 16); l2Ctx.lineTo(sx + 4, sy + 26);
+        l2Ctx.stroke();
+
+        // ── ARMS ──
+        var armAngle = e.armRaise * 1.2; // raise when attacking
+        l2Ctx.strokeStyle = '#2a4a1a';
+        l2Ctx.lineWidth = 3;
+        l2Ctx.lineCap = 'round';
+
+        // Front arm (facing player, raised)
+        var armStartX = sx + f * 7;
+        var armStartY = sy + 15;
+        var armEndX = armStartX + f * (12 + armAngle * 6);
+        var armEndY = armStartY - armAngle * 14;
+        l2Ctx.beginPath();
+        l2Ctx.moveTo(armStartX, armStartY);
+        l2Ctx.lineTo(armEndX, armEndY);
+        l2Ctx.stroke();
+        // Bony hand
+        l2Ctx.fillStyle = '#3a5a2a';
+        l2Ctx.beginPath();
+        l2Ctx.arc(armEndX, armEndY, 3, 0, Math.PI * 2);
+        l2Ctx.fill();
+        // Fingers
+        l2Ctx.strokeStyle = '#3a5a2a';
+        l2Ctx.lineWidth = 1;
+        for (var fi = -1; fi <= 1; fi++) {
+          l2Ctx.beginPath();
+          l2Ctx.moveTo(armEndX, armEndY);
+          l2Ctx.lineTo(armEndX + f * 4, armEndY + fi * 3 - 2);
+          l2Ctx.stroke();
+        }
+
+        // Back arm (hanging)
+        l2Ctx.strokeStyle = '#2a4a1a';
+        l2Ctx.lineWidth = 3;
+        l2Ctx.beginPath();
+        l2Ctx.moveTo(sx - f * 7, sy + 15);
+        l2Ctx.lineTo(sx - f * 14, sy + 28);
+        l2Ctx.stroke();
+        l2Ctx.fillStyle = '#3a5a2a';
+        l2Ctx.beginPath();
+        l2Ctx.arc(sx - f * 14, sy + 28, 2.5, 0, Math.PI * 2);
+        l2Ctx.fill();
+
+        // ── LEGS ──
+        l2Ctx.strokeStyle = '#2a3a18';
+        l2Ctx.lineWidth = 3;
+        // Left leg
+        l2Ctx.beginPath();
+        l2Ctx.moveTo(sx - 4, sy + 29);
+        l2Ctx.lineTo(sx - 6, sy + 40);
+        l2Ctx.stroke();
+        // Right leg
+        l2Ctx.beginPath();
+        l2Ctx.moveTo(sx + 4, sy + 29);
+        l2Ctx.lineTo(sx + 6, sy + 40);
+        l2Ctx.stroke();
+        // Feet
+        l2Ctx.fillStyle = '#1a2a10';
+        l2Ctx.fillRect(sx - 9, sy + 38, 6, 3);
+        l2Ctx.fillRect(sx + 3, sy + 38, 6, 3);
+
+        l2Ctx.restore();
       }
-      l2Ctx.textAlign = 'left';
-      l2Ctx.textBaseline = 'alphabetic';
     }
 
     function drawGasBalls() {
@@ -3514,17 +3640,22 @@
         var sy = g.y;
         if (sx < -20 || sx > l2Canvas.width + 20) continue;
         var fade = 1 - g.life / g.maxLife;
-        // Outer glow
+        // Fireball outer glow
         l2Ctx.beginPath();
-        l2Ctx.arc(sx, sy, g.r + 4, 0, Math.PI * 2);
-        l2Ctx.fillStyle = 'rgba(0,200,0,' + (fade * 0.2) + ')';
+        l2Ctx.arc(sx, sy, g.r + 5, 0, Math.PI * 2);
+        l2Ctx.fillStyle = 'rgba(255,80,0,' + (fade * 0.15) + ')';
         l2Ctx.fill();
-        // Core
+        // Fireball mid
+        l2Ctx.beginPath();
+        l2Ctx.arc(sx, sy, g.r + 2, 0, Math.PI * 2);
+        l2Ctx.fillStyle = 'rgba(255,120,0,' + (fade * 0.4) + ')';
+        l2Ctx.shadowColor = '#ff4400';
+        l2Ctx.shadowBlur = 10;
+        l2Ctx.fill();
+        // Fireball core
         l2Ctx.beginPath();
         l2Ctx.arc(sx, sy, g.r, 0, Math.PI * 2);
-        l2Ctx.fillStyle = 'rgba(50,255,50,' + (fade * 0.8) + ')';
-        l2Ctx.shadowColor = '#00ff00';
-        l2Ctx.shadowBlur = 8;
+        l2Ctx.fillStyle = 'rgba(255,220,50,' + (fade * 0.9) + ')';
         l2Ctx.fill();
         l2Ctx.shadowBlur = 0;
       }
