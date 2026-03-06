@@ -3015,6 +3015,11 @@
     var scrollX = 0;
     var l2Score = 0;
 
+    // Level 2 music
+    var l2Music = new Audio('Untitled 7.mp3');
+    l2Music.loop = true;
+    l2Music.volume = 0.6;
+
     // Enemies, gas balls, lightning bolts
     var enemies = [];
     var gasBalls = [];
@@ -3646,6 +3651,11 @@
       if (ageGate) ageGate.style.display = 'none';
       // Stop any age audio
       if (window._stopAllAgeAudio) window._stopAllAgeAudio();
+
+      // Stop level 1 music, start level 2 music
+      try { document.getElementById('age-music').pause(); } catch(e){}
+      l2Music.currentTime = 0;
+      l2Music.play().catch(function(){});
 
       // Show level 2
       var l2Screen = document.getElementById('level2-screen');
