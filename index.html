@@ -3090,17 +3090,22 @@
       // Ground
       platforms.push({ x: 0, y: l2Canvas.height - 40, w: 99999, h: 40, type: 'ground' });
 
-      // Generate floating horror books
+      // Generate floating horror books — spaced for jumpable gaps
       var px = 200;
-      for (var i = 0; i < 80; i++) {
-        var pw = 90 + Math.random() * 110;
-        var py = l2Canvas.height - 100 - Math.random() * (l2Canvas.height * 0.5);
+      var lastY = l2Canvas.height - 160;
+      for (var i = 0; i < 100; i++) {
+        var pw = 100 + Math.random() * 100;
+        // Keep vertical difference small enough to jump to (max ~100px up)
+        var py = lastY + (Math.random() - 0.55) * 100;
+        // Clamp so books stay in playable area
+        py = Math.max(l2Canvas.height * 0.2, Math.min(l2Canvas.height - 100, py));
+        lastY = py;
         platforms.push({
           x: px, y: py, w: pw, h: 18, type: 'book',
           title: BOOK_TITLES[Math.floor(Math.random() * BOOK_TITLES.length)],
           color: BOOK_COLORS[Math.floor(Math.random() * BOOK_COLORS.length)]
         });
-        px += 150 + Math.random() * 200;
+        px += 100 + Math.random() * 100;
       }
     }
 
