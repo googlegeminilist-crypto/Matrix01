@@ -2982,16 +2982,14 @@
       facing: 1
     };
 
-    var GRAVITY    = 0.6;
-    var JUMP_FORCE = -13;
-    var MOVE_SPEED = 5;
-    var FRICTION   = 0.85;
+    var GRAVITY    = 0.7;
+    var JUMP_FORCE = -14;
+    var MOVE_SPEED = 8;
+    var FRICTION   = 0.88;
 
-    // DOF layers for player
+    // DOF layers for player — 2 layers for performance
     var DOF_LAYERS = [
-      { scale: 1.35, blur: 18, opacity: 0.12 },
-      { scale: 1.22, blur: 10, opacity: 0.25 },
-      { scale: 1.10, blur: 4,  opacity: 0.50 },
+      { scale: 1.20, blur: 10, opacity: 0.20 },
       { scale: 1.00, blur: 0,  opacity: 1.00 }
     ];
 
@@ -3033,10 +3031,8 @@
     var hallwayImg = new Image();
     hallwayImg.src = 'hallway.png';
     var HALLWAY_DOF = [
-      { scale: 1.15, blur: 20, opacity: 0.15 },
-      { scale: 1.08, blur: 10, opacity: 0.30 },
-      { scale: 1.03, blur: 4,  opacity: 0.50 },
-      { scale: 1.00, blur: 0,  opacity: 0.70 }
+      { scale: 1.08, blur: 8, opacity: 0.25 },
+      { scale: 1.00, blur: 0, opacity: 0.70 }
     ];
 
     // Book platform image
@@ -3048,9 +3044,7 @@
     var dollApparitions = [];
     var dollSpawnTimer = 0;
     var DOLL_DOF = [
-      { scale: 1.40, blur: 22, opacity: 0.15 },
-      { scale: 1.25, blur: 12, opacity: 0.30 },
-      { scale: 1.12, blur: 5,  opacity: 0.55 },
+      { scale: 1.18, blur: 10, opacity: 0.25 },
       { scale: 1.00, blur: 0,  opacity: 1.00 }
     ];
 
@@ -3060,7 +3054,7 @@
 
     function initRain() {
       rainCols = [];
-      var cols = Math.ceil(l2Canvas.width / 14);
+      var cols = Math.ceil(l2Canvas.width / 28);
       for (var i = 0; i < cols; i++) {
         rainCols.push({
           x: i * 14,
@@ -3204,10 +3198,8 @@
           // Horror book image — 4 DOF layers
           var imgReady = bookImg.complete && bookImg.naturalWidth > 0;
           var bookDOF = [
-            { scale: 1.30, blur: 16, opacity: 0.15 },
-            { scale: 1.18, blur: 8,  opacity: 0.30 },
-            { scale: 1.08, blur: 3,  opacity: 0.55 },
-            { scale: 1.00, blur: 0,  opacity: 1.00 }
+            { scale: 1.12, blur: 6, opacity: 0.25 },
+            { scale: 1.00, blur: 0, opacity: 1.00 }
           ];
           // Book image aspect ratio ~454:300 = 1.51
           var bh = p.w / 1.51;
@@ -3237,38 +3229,139 @@
       }
     }
 
+    // Pumpkin pixel art (same as cursor) — 0=empty 1=stem 2=body 3=carving 4=eye-glow 5=tooth
+    var L2_PUMPKIN = [
+      [0,0,0,0,1,1,0,0,0,0],
+      [0,0,0,1,1,1,0,0,0,0],
+      [0,0,2,2,2,2,2,2,0,0],
+      [0,2,2,2,2,2,2,2,2,0],
+      [2,2,2,2,2,2,2,2,2,2],
+      [2,2,3,3,2,2,3,3,2,2],
+      [2,2,4,3,2,2,3,4,2,2],
+      [2,2,3,3,2,2,3,3,2,2],
+      [2,2,2,2,2,2,2,2,2,2],
+      [2,3,2,5,3,3,5,2,3,2],
+      [2,2,3,2,5,5,2,3,2,2],
+      [0,2,2,2,2,2,2,2,2,0],
+      [0,0,2,2,2,2,2,2,0,0]
+    ];
+    var L2_PX = 4; // pixel size for level 2 pumpkin
+    var walkFrame = 0;
+
+    function drawPumpkinBody(ctx, cx, cy, scale, facing) {
+      // cx, cy = center of pumpkin head
+      var px = L2_PX * scale;
+      var pw = L2_PUMPKIN[0].length * px;
+      var ph = L2_PUMPKIN.length * px;
+      var ox = cx - pw / 2;
+      var oy = cy - ph / 2;
+
+      ctx.shadowBlur = 14;
+      ctx.shadowColor = 'rgba(255,100,0,0.7)';
+
+      for (var row = 0; row < L2_PUMPKIN.length; row++) {
+        for (var col = 0; col < L2_PUMPKIN[row].length; col++) {
+          var v = L2_PUMPKIN[row][col];
+          if (!v) continue;
+          var ppx = ox + col * px;
+          var ppy = oy + row * px;
+          if (v === 1) ctx.fillStyle = '#1a6600';
+          if (v === 2) ctx.fillStyle = '#cc5500';
+          if (v === 3) ctx.fillStyle = '#0a0000';
+          if (v === 4) ctx.fillStyle = 'rgba(255,80,0,0.9)';
+          if (v === 5) ctx.fillStyle = '#ffddaa';
+          ctx.fillRect(ppx, ppy, px, px);
+        }
+      }
+      ctx.shadowBlur = 0;
+
+      // Walk animation phase
+      var moving = Math.abs(player.vx) > 0.5;
+      if (moving) walkFrame += 0.15;
+      var swing = moving ? Math.sin(walkFrame) : 0;
+      var dir = facing < 0 ? 1 : -1; // facing is flipped
+
+      var bodyBottom = oy + ph;
+      var bodyCx = cx;
+
+      // ── LEGS ──
+      var legLen = 18 * scale;
+      var legW = 4 * scale;
+      var hipSpread = 6 * scale;
+
+      // Left leg
+      var lLegAngle = swing * 0.5;
+      var lFootX = bodyCx - hipSpread + Math.sin(lLegAngle) * legLen;
+      var lFootY = bodyBottom + Math.cos(lLegAngle) * legLen;
+      ctx.strokeStyle = '#0a0000';
+      ctx.lineWidth = legW;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(bodyCx - hipSpread, bodyBottom);
+      ctx.lineTo(lFootX, lFootY);
+      ctx.stroke();
+      // Foot
+      ctx.fillStyle = '#0a0000';
+      ctx.fillRect(lFootX - 4 * scale, lFootY - 1, 8 * scale, 4 * scale);
+
+      // Right leg
+      var rLegAngle = -swing * 0.5;
+      var rFootX = bodyCx + hipSpread + Math.sin(rLegAngle) * legLen;
+      var rFootY = bodyBottom + Math.cos(rLegAngle) * legLen;
+      ctx.beginPath();
+      ctx.moveTo(bodyCx + hipSpread, bodyBottom);
+      ctx.lineTo(rFootX, rFootY);
+      ctx.stroke();
+      ctx.fillRect(rFootX - 4 * scale, rFootY - 1, 8 * scale, 4 * scale);
+
+      // ── ARMS ──
+      var armLen = 16 * scale;
+      var armW = 3 * scale;
+      var shoulderY = oy + ph * 0.35;
+      var armSwing = moving ? Math.sin(walkFrame + Math.PI) * 0.6 : 0.3;
+
+      ctx.lineWidth = armW;
+
+      // Left arm
+      var lArmEndX = bodyCx - pw / 2 - Math.cos(armSwing) * armLen;
+      var lArmEndY = shoulderY + Math.abs(Math.sin(armSwing)) * armLen * 0.5 + armLen * 0.5;
+      ctx.strokeStyle = '#0a0000';
+      ctx.beginPath();
+      ctx.moveTo(bodyCx - pw / 2 + 2, shoulderY);
+      ctx.lineTo(lArmEndX, lArmEndY);
+      ctx.stroke();
+      // Hand
+      ctx.fillStyle = '#cc5500';
+      ctx.beginPath();
+      ctx.arc(lArmEndX, lArmEndY, 3.5 * scale, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Right arm
+      var rArmEndX = bodyCx + pw / 2 + Math.cos(armSwing) * armLen;
+      var rArmEndY = shoulderY + Math.abs(Math.sin(armSwing)) * armLen * 0.5 + armLen * 0.5;
+      ctx.beginPath();
+      ctx.moveTo(bodyCx + pw / 2 - 2, shoulderY);
+      ctx.lineTo(rArmEndX, rArmEndY);
+      ctx.stroke();
+      ctx.fillStyle = '#cc5500';
+      ctx.beginPath();
+      ctx.arc(rArmEndX, rArmEndY, 3.5 * scale, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
     function drawPlayer() {
-      var sx = player.x - scrollX;
-      var sy = player.y;
+      var sx = player.x - scrollX + player.w / 2;
+      var sy = player.y + player.h / 2 - 10; // offset up since legs extend below
 
       // DOF layers
       for (var i = 0; i < DOF_LAYERS.length; i++) {
         var L = DOF_LAYERS[i];
-        var dw = player.w * L.scale;
-        var dh = player.h * L.scale;
-        var dx = sx - (dw - player.w) / 2;
-        var dy = sy - (dh - player.h) / 2;
 
         l2Ctx.save();
         l2Ctx.globalAlpha = L.opacity;
         if (L.blur > 0) l2Ctx.filter = 'blur(' + L.blur + 'px)';
 
-        if (smileyImg.complete && smileyImg.naturalWidth > 0) {
-          // Flip if facing left
-          if (player.facing < 0) {
-            l2Ctx.translate(dx + dw, dy);
-            l2Ctx.scale(-1, 1);
-            l2Ctx.drawImage(smileyImg, 0, 0, dw, dh);
-          } else {
-            l2Ctx.drawImage(smileyImg, dx, dy, dw, dh);
-          }
-        } else {
-          // Fallback circle
-          l2Ctx.fillStyle = '#ffdd00';
-          l2Ctx.beginPath();
-          l2Ctx.arc(dx + dw/2, dy + dh/2, dw/2, 0, Math.PI * 2);
-          l2Ctx.fill();
-        }
+        drawPumpkinBody(l2Ctx, sx, sy, L.scale, player.facing);
 
         l2Ctx.restore();
       }
@@ -3551,8 +3644,8 @@
 
     function updatePlayer() {
       // Input
-      if (keys['ArrowLeft']  || keys['KeyA']) { player.vx -= MOVE_SPEED * 0.3; player.facing = 1; }
-      if (keys['ArrowRight'] || keys['KeyD']) { player.vx += MOVE_SPEED * 0.3; player.facing = -1; }
+      if (keys['ArrowLeft']  || keys['KeyA']) { player.vx -= MOVE_SPEED * 0.4; player.facing = 1; }
+      if (keys['ArrowRight'] || keys['KeyD']) { player.vx += MOVE_SPEED * 0.4; player.facing = -1; }
       if ((keys['Space'] || keys['ArrowUp'] || keys['KeyW']) && player.onGround) {
         player.vy = JUMP_FORCE;
         player.onGround = false;
