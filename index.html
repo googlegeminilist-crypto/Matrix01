@@ -978,6 +978,72 @@
       #hardcore-btn { font-size: clamp(0.65rem, 3vw, 0.9rem) !important; text-align: center; }
     }
 
+    /* ═══════════════════════════════════════════════════════════
+       LEVEL 2 — PLATFORMER
+       ═══════════════════════════════════════════════════════════ */
+    #level2-screen {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 950;
+      background: #000;
+      overflow: hidden;
+    }
+    #level2-screen.active { display: block; }
+
+    #l2-canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    #l2-chapter-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 960;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,0.95);
+      font-family: 'Courier New', monospace;
+      transition: opacity 1.5s;
+    }
+    #l2-chapter-overlay .chapter-title {
+      font-size: clamp(2rem, 6vw, 4rem);
+      font-weight: 700;
+      color: #00ff41;
+      letter-spacing: 0.3em;
+      text-shadow: 0 0 20px #00ff41, 0 0 60px #00aa2a;
+      margin-bottom: 1.5rem;
+    }
+    #l2-chapter-overlay .chapter-text {
+      font-size: clamp(0.9rem, 2.5vw, 1.3rem);
+      color: #00ff41;
+      text-shadow: 0 0 10px #00aa2a;
+      text-align: center;
+      padding: 0 2rem;
+      line-height: 1.8;
+      max-width: 600px;
+    }
+
+    /* Debug button */
+    #debug-l2-btn {
+      position: fixed;
+      bottom: 10px;
+      right: 10px;
+      z-index: 10000;
+      background: #220000;
+      color: #ff4444;
+      border: 1px solid #ff4444;
+      font-family: 'Courier New', monospace;
+      font-size: 10px;
+      padding: 4px 8px;
+      cursor: pointer;
+      opacity: 0.6;
+    }
+    #debug-l2-btn:hover { opacity: 1; }
+
   </style>
 </head>
 <!-- Google tag (gtag.js) -->
@@ -2877,5 +2943,401 @@
     }
     // -----------------------------------------------------------------------
   </script>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       LEVEL 2 — PLATFORMER
+       ═══════════════════════════════════════════════════════════════════ -->
+  <div id="level2-screen">
+    <div id="l2-chapter-overlay">
+      <div class="chapter-title">CHAPTER 2</div>
+      <div class="chapter-text">
+        The ghost turned you into an emoji for winning ha ha<br><br>
+        Use arrow keys to move<br>
+        Space bar to jump<br>
+        Survive the nightmare
+      </div>
+    </div>
+    <canvas id="l2-canvas"></canvas>
+  </div>
+
+  <!-- Debug: skip to level 2 -->
+  <button id="debug-l2-btn" onclick="startLevel2()">DEBUG: LEVEL 2</button>
+
+  <script>
+  (function() {
+    // ── LEVEL 2 STATE ──────────────────────────────────────────────
+    var l2Active = false;
+    var l2Canvas = document.getElementById('l2-canvas');
+    var l2Ctx    = l2Canvas.getContext('2d');
+    var chapterOverlay = document.getElementById('l2-chapter-overlay');
+
+    // Player
+    var smileyImg = new Image();
+    smileyImg.src = 'smiley-player.png';
+
+    var player = {
+      x: 100, y: 0, w: 60, h: 54,
+      vx: 0, vy: 0,
+      onGround: false,
+      facing: 1
+    };
+
+    var GRAVITY    = 0.6;
+    var JUMP_FORCE = -13;
+    var MOVE_SPEED = 5;
+    var FRICTION   = 0.85;
+
+    // DOF layers for player
+    var DOF_LAYERS = [
+      { scale: 1.35, blur: 18, opacity: 0.12 },
+      { scale: 1.22, blur: 10, opacity: 0.25 },
+      { scale: 1.10, blur: 4,  opacity: 0.50 },
+      { scale: 1.00, blur: 0,  opacity: 1.00 }
+    ];
+
+    // Keys
+    var keys = {};
+    window.addEventListener('keydown', function(e) {
+      keys[e.code] = true;
+      if (l2Active && (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'ArrowDown')) {
+        e.preventDefault();
+      }
+    });
+    window.addEventListener('keyup', function(e) { keys[e.code] = false; });
+
+    // Platforms
+    var platforms = [];
+    var scrollX = 0;
+    var l2Score = 0;
+
+    // Matrix rain columns for background
+    var rainCols = [];
+    var rainCharSet = 'MATRIX01ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%';
+
+    function initRain() {
+      rainCols = [];
+      var cols = Math.ceil(l2Canvas.width / 14);
+      for (var i = 0; i < cols; i++) {
+        rainCols.push({
+          x: i * 14,
+          y: Math.random() * l2Canvas.height,
+          speed: 2 + Math.random() * 4,
+          chars: []
+        });
+        var len = 8 + Math.floor(Math.random() * 16);
+        for (var j = 0; j < len; j++) {
+          rainCols[i].chars.push(rainCharSet.charAt(Math.floor(Math.random() * rainCharSet.length)));
+        }
+      }
+    }
+
+    function generatePlatforms() {
+      platforms = [];
+      // Ground
+      platforms.push({ x: 0, y: l2Canvas.height - 40, w: 99999, h: 40, type: 'ground' });
+
+      // Generate floating platforms
+      var px = 200;
+      for (var i = 0; i < 80; i++) {
+        var pw = 80 + Math.random() * 120;
+        var py = l2Canvas.height - 100 - Math.random() * (l2Canvas.height * 0.5);
+        platforms.push({ x: px, y: py, w: pw, h: 14, type: 'float' });
+        px += 150 + Math.random() * 200;
+      }
+    }
+
+    function resizeL2() {
+      l2Canvas.width  = window.innerWidth;
+      l2Canvas.height = window.innerHeight;
+      initRain();
+    }
+
+    // ── DRAWING ────────────────────────────────────────────────────
+
+    function drawRain() {
+      l2Ctx.font = '14px monospace';
+      for (var i = 0; i < rainCols.length; i++) {
+        var col = rainCols[i];
+        col.y += col.speed;
+        if (col.y > l2Canvas.height + col.chars.length * 16) {
+          col.y = -col.chars.length * 16;
+          // Randomize chars
+          for (var j = 0; j < col.chars.length; j++) {
+            col.chars[j] = rainCharSet.charAt(Math.floor(Math.random() * rainCharSet.length));
+          }
+        }
+        for (var j = 0; j < col.chars.length; j++) {
+          var cy = col.y + j * 16;
+          if (cy < -16 || cy > l2Canvas.height + 16) continue;
+          var fade = 1 - j / col.chars.length;
+          var g = Math.floor(180 * fade);
+          if (j === col.chars.length - 1) g = 255;
+          l2Ctx.fillStyle = 'rgba(0,' + g + ',' + Math.floor(g * 0.15) + ',' + (fade * 0.4) + ')';
+          l2Ctx.fillText(col.chars[j], col.x, cy);
+        }
+      }
+    }
+
+    function drawPlatforms() {
+      for (var i = 0; i < platforms.length; i++) {
+        var p = platforms[i];
+        var sx = p.x - scrollX;
+        if (sx + p.w < -50 || sx > l2Canvas.width + 50) continue;
+
+        if (p.type === 'ground') {
+          // Ground — dark green gradient
+          var grd = l2Ctx.createLinearGradient(0, p.y, 0, p.y + p.h);
+          grd.addColorStop(0, '#003300');
+          grd.addColorStop(1, '#001100');
+          l2Ctx.fillStyle = grd;
+          l2Ctx.fillRect(sx, p.y, Math.min(p.w, l2Canvas.width + 100), p.h);
+          // Top edge glow
+          l2Ctx.strokeStyle = '#00ff41';
+          l2Ctx.lineWidth = 2;
+          l2Ctx.shadowColor = '#00ff41';
+          l2Ctx.shadowBlur = 8;
+          l2Ctx.beginPath();
+          l2Ctx.moveTo(sx, p.y);
+          l2Ctx.lineTo(sx + Math.min(p.w, l2Canvas.width + 100), p.y);
+          l2Ctx.stroke();
+          l2Ctx.shadowBlur = 0;
+        } else {
+          // Floating platform — glowing green
+          l2Ctx.fillStyle = '#002200';
+          l2Ctx.fillRect(sx, p.y, p.w, p.h);
+          l2Ctx.strokeStyle = '#00ff41';
+          l2Ctx.lineWidth = 2;
+          l2Ctx.shadowColor = '#00ff41';
+          l2Ctx.shadowBlur = 10;
+          l2Ctx.strokeRect(sx, p.y, p.w, p.h);
+          l2Ctx.shadowBlur = 0;
+        }
+      }
+    }
+
+    function drawPlayer() {
+      var sx = player.x - scrollX;
+      var sy = player.y;
+
+      // DOF layers
+      for (var i = 0; i < DOF_LAYERS.length; i++) {
+        var L = DOF_LAYERS[i];
+        var dw = player.w * L.scale;
+        var dh = player.h * L.scale;
+        var dx = sx - (dw - player.w) / 2;
+        var dy = sy - (dh - player.h) / 2;
+
+        l2Ctx.save();
+        l2Ctx.globalAlpha = L.opacity;
+        if (L.blur > 0) l2Ctx.filter = 'blur(' + L.blur + 'px)';
+
+        if (smileyImg.complete && smileyImg.naturalWidth > 0) {
+          // Flip if facing left
+          if (player.facing < 0) {
+            l2Ctx.translate(dx + dw, dy);
+            l2Ctx.scale(-1, 1);
+            l2Ctx.drawImage(smileyImg, 0, 0, dw, dh);
+          } else {
+            l2Ctx.drawImage(smileyImg, dx, dy, dw, dh);
+          }
+        } else {
+          // Fallback circle
+          l2Ctx.fillStyle = '#ffdd00';
+          l2Ctx.beginPath();
+          l2Ctx.arc(dx + dw/2, dy + dh/2, dw/2, 0, Math.PI * 2);
+          l2Ctx.fill();
+        }
+
+        l2Ctx.restore();
+      }
+    }
+
+    function drawHUD() {
+      l2Ctx.font = '16px "Courier New", monospace';
+      l2Ctx.fillStyle = '#00ff41';
+      l2Ctx.shadowColor = '#00ff41';
+      l2Ctx.shadowBlur = 6;
+      l2Ctx.fillText('CHAPTER 2', 20, 30);
+      l2Ctx.fillText('DISTANCE: ' + Math.floor(scrollX / 10), 20, 52);
+      l2Ctx.shadowBlur = 0;
+
+      // Controls hint
+      l2Ctx.font = '12px "Courier New", monospace';
+      l2Ctx.fillStyle = 'rgba(0,255,65,0.4)';
+      l2Ctx.fillText('ARROWS: move   SPACE: jump', 20, l2Canvas.height - 20);
+    }
+
+    // ── PHYSICS ────────────────────────────────────────────────────
+
+    function updatePlayer() {
+      // Input
+      if (keys['ArrowLeft']  || keys['KeyA']) { player.vx -= MOVE_SPEED * 0.3; player.facing = 1; }
+      if (keys['ArrowRight'] || keys['KeyD']) { player.vx += MOVE_SPEED * 0.3; player.facing = -1; }
+      if ((keys['Space'] || keys['ArrowUp'] || keys['KeyW']) && player.onGround) {
+        player.vy = JUMP_FORCE;
+        player.onGround = false;
+      }
+
+      // Friction
+      player.vx *= FRICTION;
+      if (Math.abs(player.vx) < 0.1) player.vx = 0;
+
+      // Clamp horizontal speed
+      if (player.vx > MOVE_SPEED) player.vx = MOVE_SPEED;
+      if (player.vx < -MOVE_SPEED) player.vx = -MOVE_SPEED;
+
+      // Gravity
+      player.vy += GRAVITY;
+
+      // Move X
+      player.x += player.vx;
+
+      // Move Y
+      player.y += player.vy;
+
+      // Collision with platforms
+      player.onGround = false;
+      for (var i = 0; i < platforms.length; i++) {
+        var p = platforms[i];
+        // Only collide from above
+        if (player.x + player.w > p.x && player.x < p.x + p.w) {
+          if (player.y + player.h >= p.y && player.y + player.h <= p.y + p.h + player.vy + 2) {
+            if (player.vy >= 0) {
+              player.y = p.y - player.h;
+              player.vy = 0;
+              player.onGround = true;
+            }
+          }
+        }
+      }
+
+      // Don't go left of start
+      if (player.x < 0) player.x = 0;
+
+      // Fall off screen — respawn
+      if (player.y > l2Canvas.height + 100) {
+        player.x = scrollX + 100;
+        player.y = 0;
+        player.vy = 0;
+      }
+    }
+
+    function updateCamera() {
+      // Camera follows player
+      var targetX = player.x - l2Canvas.width * 0.3;
+      if (targetX < 0) targetX = 0;
+      scrollX += (targetX - scrollX) * 0.1;
+    }
+
+    // ── GAME LOOP ──────────────────────────────────────────────────
+
+    var l2Raf;
+
+    function l2Loop() {
+      if (!l2Active) return;
+
+      // Clear with fade trail
+      l2Ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+      l2Ctx.fillRect(0, 0, l2Canvas.width, l2Canvas.height);
+
+      drawRain();
+      updatePlayer();
+      updateCamera();
+      drawPlatforms();
+      drawPlayer();
+      drawHUD();
+
+      l2Raf = requestAnimationFrame(l2Loop);
+    }
+
+    // ── START LEVEL 2 ──────────────────────────────────────────────
+
+    window.startLevel2 = function() {
+      // Hide everything from level 1
+      var raceResult = document.getElementById('race-result');
+      if (raceResult) raceResult.remove();
+      var ageGate = document.getElementById('age-gate');
+      if (ageGate) ageGate.style.display = 'none';
+      // Stop any age audio
+      if (window._stopAllAgeAudio) window._stopAllAgeAudio();
+
+      // Show level 2
+      var l2Screen = document.getElementById('level2-screen');
+      l2Screen.classList.add('active');
+
+      resizeL2();
+      window.addEventListener('resize', resizeL2);
+
+      // Show chapter text first
+      chapterOverlay.style.display = 'flex';
+      chapterOverlay.style.opacity = '1';
+
+      // Reset player
+      player.x = 100;
+      player.y = l2Canvas.height - 140;
+      player.vx = 0;
+      player.vy = 0;
+      player.onGround = false;
+      scrollX = 0;
+
+      generatePlatforms();
+
+      // Fade out chapter overlay after 4 seconds
+      setTimeout(function() {
+        chapterOverlay.style.opacity = '0';
+        setTimeout(function() {
+          chapterOverlay.style.display = 'none';
+        }, 1500);
+      }, 4000);
+
+      // Start game loop
+      l2Active = true;
+      l2Loop();
+
+      // Hide debug button
+      document.getElementById('debug-l2-btn').style.display = 'none';
+    };
+
+    // ── HOOK INTO LEVEL 1 WIN ──────────────────────────────────────
+
+    // Override showRaceResult to add Level 2 transition on win
+    var _origShowRaceResult = window.showRaceResult || null;
+
+    // Monkey-patch: after the race result overlay is created, change the win button
+    var _origCheckRace = null;
+
+    // We observe the DOM for the race-result overlay
+    var observer = new MutationObserver(function(mutations) {
+      mutations.forEach(function(m) {
+        m.addedNodes.forEach(function(node) {
+          if (node.id === 'race-result') {
+            // Check if player won (green title = win)
+            var titleEl = node.querySelector('div');
+            if (titleEl && titleEl.textContent === 'YOU WIN') {
+              // Replace PLAY AGAIN button with CHAPTER 2 button
+              var btn = node.querySelector('button');
+              if (btn) {
+                btn.textContent = 'CHAPTER 2';
+                btn.style.color = '#00ff41';
+                btn.style.borderColor = '#00ff41';
+                btn.style.boxShadow = '0 0 12px #00ff41';
+                // Remove old click handlers
+                var newBtn = btn.cloneNode(true);
+                btn.parentNode.replaceChild(newBtn, btn);
+                newBtn.addEventListener('click', function() {
+                  node.remove();
+                  startLevel2();
+                });
+              }
+            }
+          }
+        });
+      });
+    });
+    observer.observe(document.body, { childList: true });
+
+  })();
+  </script>
+
 </body>
 </html>
