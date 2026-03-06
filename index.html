@@ -3024,6 +3024,16 @@
     var ENEMY_EMOJIS = ['😠','😡','😤','🤬','👿'];
 
     // Doll apparition
+    // Hallway background
+    var hallwayImg = new Image();
+    hallwayImg.src = 'hallway.png';
+    var HALLWAY_DOF = [
+      { scale: 1.15, blur: 20, opacity: 0.15 },
+      { scale: 1.08, blur: 10, opacity: 0.30 },
+      { scale: 1.03, blur: 4,  opacity: 0.50 },
+      { scale: 1.00, blur: 0,  opacity: 0.70 }
+    ];
+
     var dollImg = new Image();
     dollImg.src = 'cooldool.png';
     var dollApparitions = [];
@@ -3100,6 +3110,37 @@
           l2Ctx.fillStyle = 'rgba(0,' + g + ',' + Math.floor(g * 0.15) + ',' + (fade * 0.4) + ')';
           l2Ctx.fillText(col.chars[j], col.x, cy);
         }
+      }
+    }
+
+    function drawHallway() {
+      if (!hallwayImg.complete || hallwayImg.naturalWidth === 0) return;
+
+      var cw = l2Canvas.width;
+      var ch = l2Canvas.height;
+      // Tile hallway across the level, parallax scroll at 0.3x speed
+      var parallax = scrollX * 0.3;
+      var imgW = cw;  // stretch each tile to full screen width
+      var imgH = ch;
+
+      for (var layer = 0; layer < HALLWAY_DOF.length; layer++) {
+        var L = HALLWAY_DOF[layer];
+        var sw = imgW * L.scale;
+        var sh = imgH * L.scale;
+
+        l2Ctx.save();
+        l2Ctx.globalAlpha = L.opacity;
+        if (L.blur > 0) l2Ctx.filter = 'blur(' + L.blur + 'px)';
+
+        // Draw tiled hallway panels with parallax
+        var startX = -(parallax % cw) - cw;
+        for (var tx = startX; tx < cw + sw; tx += cw) {
+          var dx = tx - (sw - imgW) / 2;
+          var dy = -(sh - imgH) / 2;
+          l2Ctx.drawImage(hallwayImg, dx, dy, sw, sh);
+        }
+
+        l2Ctx.restore();
       }
     }
 
@@ -3519,12 +3560,13 @@
     function l2Loop() {
       if (!l2Active) return;
 
-      // Clear with fade trail
-      l2Ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+      // Clear
+      l2Ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
       l2Ctx.fillRect(0, 0, l2Canvas.width, l2Canvas.height);
 
       if (shootCooldown > 0) shootCooldown--;
 
+      drawHallway();
       drawRain();
       updatePlayer();
       updateEnemies();
