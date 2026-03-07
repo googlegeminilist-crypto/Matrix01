@@ -3088,8 +3088,8 @@
       platforms = [];
       // No ground — fall = game over
       // Starting platform so player has somewhere to land
-      platforms.push({ x: 0, y: l2Canvas.height - 120, w: 180, h: 18, type: 'book',
-        title: 'START HERE', color: '#003322' });
+      platforms.push({ x: 0, y: l2Canvas.height - 120, baseY: l2Canvas.height - 120, w: 180, h: 18, type: 'book',
+        title: 'START HERE', color: '#003322', bobIndex: -1 });
 
       // Generate floating horror books — spaced for jumpable gaps
       var px = 200;
@@ -3102,11 +3102,30 @@
         py = Math.max(l2Canvas.height * 0.2, Math.min(l2Canvas.height - 100, py));
         lastY = py;
         platforms.push({
-          x: px, y: py, w: pw, h: 18, type: 'book',
+          x: px, y: py, baseY: py, w: pw, h: 18, type: 'book',
           title: BOOK_TITLES[Math.floor(Math.random() * BOOK_TITLES.length)],
-          color: BOOK_COLORS[Math.floor(Math.random() * BOOK_COLORS.length)]
+          color: BOOK_COLORS[Math.floor(Math.random() * BOOK_COLORS.length)],
+          bobIndex: i
         });
         px += 100 + Math.random() * 100;
+      }
+    }
+
+    // Book bob animation — each book bobs at its own random speed/phase
+    var bookBobTime = 0;
+
+    function updateBookBob() {
+      bookBobTime += 1 / 60;
+      for (var i = 0; i < platforms.length; i++) {
+        var p = platforms[i];
+        if (p.type !== 'book' || p.baseY === undefined || p.bobIndex < 0) continue;
+        // Each book has its own speed and phase offset
+        if (!p.bobSpeed) {
+          p.bobSpeed = 0.5 + Math.random() * 1.0; // random speed
+          p.bobPhase = Math.random() * Math.PI * 2; // random start phase
+          p.bobAmp = 15 + Math.random() * 20; // 15-35px amplitude
+        }
+        p.y = p.baseY + Math.sin(bookBobTime * p.bobSpeed + p.bobPhase) * p.bobAmp;
       }
     }
 
@@ -3377,7 +3396,8 @@
               hp: 1,
               shootTimer: 40 + Math.floor(Math.random() * 60),
               facing: Math.random() < 0.5 ? -1 : 1,
-              armRaise: 0
+              armRaise: 0,
+              platform: p // reference to their book
             });
           }
           return;
@@ -3394,6 +3414,8 @@
 
       for (var i = enemies.length - 1; i >= 0; i--) {
         var e = enemies[i];
+        // Track book position
+        if (e.platform) e.y = e.platform.y - 45;
         // Face the player
         if (player.x < e.x) e.facing = -1; else e.facing = 1;
 
@@ -3608,9 +3630,16 @@
     // ── DOLL APPARITION ──────────────────────────────────────────
 
     var dollSound1 = new Audio('freesound_community-there_was_a_time-32907.mp3');
-    dollSound1.volume = 0.7;
+    dollSound1.volume = 1.0;
     var dollSound2 = new Audio('freesound_community-horror-whisper-voice-angry-29738.mp3');
-    dollSound2.volume = 0.7;
+    dollSound2.volume = 1.0;
+    // Boost dollSound2 beyond max using Web Audio API gain node
+    var _boostCtx = new (window.AudioContext || window.webkitAudioContext)();
+    var _boostSource = _boostCtx.createMediaElementSource(dollSound2);
+    var _boostGain = _boostCtx.createGain();
+    _boostGain.gain.value = 3.0; // 3x louder
+    _boostSource.connect(_boostGain);
+    _boostGain.connect(_boostCtx.destination);
 
     function updateDollApparitions() {
       dollSpawnTimer++;
@@ -3809,6 +3838,7 @@
 
       drawHallway();
       drawRain();
+      updateBookBob();
       updatePlayer();
       updateEnemies();
       updateGasBalls();
