@@ -3448,6 +3448,135 @@
       }
     }
 
+    // ── FLYING DOLLS ────────────────────────────────────────────
+
+    var flyingDolls = [];
+    var flyDollSpawnTimer = 0;
+
+    function spawnFlyingDoll() {
+      // Pick a random enemy sitting on a book and turn it into a flying doll
+      if (enemies.length === 0) return;
+      var idx = Math.floor(Math.random() * enemies.length);
+      var e = enemies[idx];
+      // Remove from book enemies
+      enemies.splice(idx, 1);
+      // Create flying doll at the enemy's position
+      flyingDolls.push({
+        x: e.x, y: e.y,
+        w: 35, h: 52,
+        vx: 0, vy: -3, // lift off upward first
+        wobble: Math.random() * Math.PI * 2,
+        alive: true
+      });
+    }
+
+    function updateFlyingDolls() {
+      flyDollSpawnTimer++;
+      if (flyDollSpawnTimer > 250 + Math.random() * 200 && flyingDolls.length < 3) {
+        spawnFlyingDoll();
+        flyDollSpawnTimer = 0;
+      }
+
+      for (var i = flyingDolls.length - 1; i >= 0; i--) {
+        var fd = flyingDolls[i];
+        if (!fd.alive) { flyingDolls.splice(i, 1); continue; }
+
+        // Chase the pumpkin
+        var dx = (player.x + player.w / 2) - fd.x;
+        var dy = (player.y + player.h / 2) - fd.y;
+        var dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > 0) {
+          fd.vx += (dx / dist) * 0.15;
+          fd.vy += (dy / dist) * 0.15;
+        }
+        // Clamp speed
+        var spd = Math.sqrt(fd.vx * fd.vx + fd.vy * fd.vy);
+        if (spd > 4) { fd.vx = (fd.vx / spd) * 4; fd.vy = (fd.vy / spd) * 4; }
+
+        // Wobble
+        fd.wobble += 0.08;
+        fd.x += fd.vx + Math.sin(fd.wobble) * 1.5;
+        fd.y += fd.vy + Math.cos(fd.wobble * 0.7) * 1.0;
+
+        // Hit player? — GAME OVER
+        var hx = (player.x + player.w / 2) - fd.x;
+        var hy = (player.y + player.h / 2) - fd.y;
+        if (hx * hx + hy * hy < 35 * 35) {
+          fd.alive = false;
+          showL2GameOver();
+          return;
+        }
+
+        // Remove if way off screen behind player
+        if (fd.x < scrollX - 400) { flyingDolls.splice(i, 1); }
+      }
+    }
+
+    function drawFlyingDolls() {
+      if (!dollImg.complete || dollImg.naturalWidth === 0) return;
+
+      for (var i = 0; i < flyingDolls.length; i++) {
+        var fd = flyingDolls[i];
+        var sx = fd.x - scrollX;
+        var sy = fd.y;
+        if (sx < -80 || sx > l2Canvas.width + 80) continue;
+
+        // Rotation based on wobble
+        var rot = Math.sin(fd.wobble * 2) * 0.2;
+
+        l2Ctx.save();
+        l2Ctx.translate(sx, sy);
+        l2Ctx.rotate(rot);
+
+        // DOF blur layer
+        l2Ctx.globalAlpha = 0.2;
+        l2Ctx.filter = 'blur(5px)';
+        l2Ctx.drawImage(dollImg, -fd.w * 0.6, -fd.h * 0.6, fd.w * 1.2, fd.h * 1.2);
+
+        // Sharp layer
+        l2Ctx.globalAlpha = 1;
+        l2Ctx.filter = 'none';
+        l2Ctx.drawImage(dollImg, -fd.w / 2, -fd.h / 2, fd.w, fd.h);
+
+        l2Ctx.restore();
+
+        // Red glowing eyes
+        l2Ctx.save();
+        l2Ctx.globalAlpha = 0.8;
+        var eyeY = sy - fd.h * 0.1;
+        for (var side = -1; side <= 1; side += 2) {
+          l2Ctx.beginPath();
+          l2Ctx.arc(sx + side * fd.w * 0.1, eyeY, 2.5, 0, Math.PI * 2);
+          l2Ctx.fillStyle = '#ff0000';
+          l2Ctx.shadowColor = '#ff0000';
+          l2Ctx.shadowBlur = 8;
+          l2Ctx.fill();
+        }
+        l2Ctx.shadowBlur = 0;
+        l2Ctx.restore();
+      }
+    }
+
+    // Let lightning bolts kill flying dolls too
+    var _origUpdateBolts = updateBolts;
+    updateBolts = function() {
+      _origUpdateBolts();
+      for (var i = bolts.length - 1; i >= 0; i--) {
+        var b = bolts[i];
+        for (var j = flyingDolls.length - 1; j >= 0; j--) {
+          var fd = flyingDolls[j];
+          var dx = b.x - fd.x;
+          var dy = b.y - fd.y;
+          if (dx * dx + dy * dy < 45 * 45) {
+            flyingDolls.splice(j, 1);
+            bolts.splice(i, 1);
+            l2Score++;
+            break;
+          }
+        }
+      }
+    };
+
     function updateGasBalls() {
       for (var i = gasBalls.length - 1; i >= 0; i--) {
         var g = gasBalls[i];
@@ -3844,10 +3973,12 @@
       updateGasBalls();
       updateBolts();
       updateDollApparitions();
+      updateFlyingDolls();
       updateCamera();
       drawPlatforms();
       drawDollApparitions();
       drawEnemies();
+      drawFlyingDolls();
       drawGasBalls();
       drawBolts();
       drawPlayer();
@@ -3900,6 +4031,8 @@
       shootCooldown = 0;
       dollApparitions = [];
       dollSpawnTimer = 0;
+      flyingDolls = [];
+      flyDollSpawnTimer = 0;
 
       generatePlatforms();
 
