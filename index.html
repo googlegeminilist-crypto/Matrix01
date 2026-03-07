@@ -3597,25 +3597,56 @@
       }
     }
 
+    // Midpoint displacement for realistic branching lightning
+    function boltMidpoint(x1, y1, x2, y2, depth, spread, segments) {
+      if (depth === 0) {
+        segments.push({ x: x2, y: y2 });
+        return;
+      }
+      var mx = (x1 + x2) / 2 + (Math.random() - 0.5) * spread;
+      var my = (y1 + y2) / 2 + (Math.random() - 0.5) * spread;
+      boltMidpoint(x1, y1, mx, my, depth - 1, spread * 0.55, segments);
+      boltMidpoint(mx, my, x2, y2, depth - 1, spread * 0.55, segments);
+    }
+
+    function generateBoltSegments(dir, len) {
+      var segments = [{ x: 0, y: 0 }];
+      boltMidpoint(0, 0, dir * len, (Math.random() - 0.5) * 12, 5, 28, segments);
+      return segments;
+    }
+
+    function generateBranch(startSeg, dir) {
+      var branchSegs = [{ x: startSeg.x, y: startSeg.y }];
+      var branchLen = 25 + Math.random() * 40;
+      var angle = (dir > 0 ? 0 : Math.PI) + (Math.random() - 0.5) * 1.2;
+      var ex = startSeg.x + Math.cos(angle) * branchLen;
+      var ey = startSeg.y + Math.sin(angle) * branchLen;
+      boltMidpoint(startSeg.x, startSeg.y, ex, ey, 3, 14, branchSegs);
+      return branchSegs;
+    }
+
     function shootBolt() {
       var dir = player.facing < 0 ? 1 : -1; // facing is flipped in draw
+      var mainLen = 80 + Math.random() * 30;
+      var mainSegs = generateBoltSegments(dir, mainLen);
+
+      // Create branches from random points along the main bolt
+      var branches = [];
+      for (var j = 0; j < mainSegs.length; j++) {
+        if (j > 2 && j < mainSegs.length - 2 && Math.random() < 0.35) {
+          branches.push(generateBranch(mainSegs[j], dir));
+        }
+      }
+
       bolts.push({
         x: player.x + player.w / 2 + dir * 20,
         y: player.y + player.h / 2,
         vx: dir * 12,
         life: 0, maxLife: 40,
-        segments: []
+        segments: mainSegs,
+        branches: branches,
+        flicker: 1.0
       });
-      // Generate jagged lightning segments
-      var b = bolts[bolts.length - 1];
-      var sx = 0;
-      var sy = 0;
-      b.segments.push({ x: sx, y: sy });
-      for (var j = 0; j < 6; j++) {
-        sx += dir * 14;
-        sy += (Math.random() - 0.5) * 16;
-        b.segments.push({ x: sx, y: sy });
-      }
     }
 
     function updateBolts() {
@@ -3727,33 +3758,68 @@
       }
     }
 
+    function drawBoltPath(segs, sx, sy, passes, flicker) {
+      if (segs.length < 2) return;
+      for (var p = 0; p < passes.length; p++) {
+        l2Ctx.save();
+        l2Ctx.globalAlpha = passes[p].opacity * flicker;
+        l2Ctx.beginPath();
+        l2Ctx.moveTo(sx + segs[0].x, sy + segs[0].y);
+        for (var k = 1; k < segs.length; k++) {
+          l2Ctx.lineTo(sx + segs[k].x, sy + segs[k].y);
+        }
+        l2Ctx.strokeStyle = passes[p].color;
+        l2Ctx.lineWidth = passes[p].width;
+        l2Ctx.lineCap = 'round';
+        l2Ctx.lineJoin = 'round';
+        l2Ctx.shadowColor = passes[p].shadow;
+        l2Ctx.shadowBlur = passes[p].blur;
+        l2Ctx.stroke();
+        // Double-stroke shadow for intensity
+        if (passes[p].blur > 10) l2Ctx.stroke();
+        l2Ctx.restore();
+      }
+    }
+
     function drawBolts() {
+      // 4-pass DOF: deep purple glow → blue glow → bright blue → white core
+      var passes = [
+        { width: 12, blur: 28, color: 'rgba(120,60,200,0.18)',  shadow: '#7733cc', opacity: 1 },
+        { width: 7,  blur: 16, color: 'rgba(80,140,255,0.35)',  shadow: '#4488ff', opacity: 1 },
+        { width: 3,  blur: 6,  color: 'rgba(160,200,255,0.7)',  shadow: '#88bbff', opacity: 1 },
+        { width: 1.2, blur: 0, color: 'rgba(240,245,255,1)',    shadow: '#ffffff', opacity: 1 }
+      ];
+      // Branch passes — slightly thinner
+      var branchPasses = [
+        { width: 8,  blur: 22, color: 'rgba(120,60,200,0.12)',  shadow: '#7733cc', opacity: 1 },
+        { width: 4,  blur: 10, color: 'rgba(80,140,255,0.25)',  shadow: '#4488ff', opacity: 1 },
+        { width: 1.8, blur: 3, color: 'rgba(160,200,255,0.6)',  shadow: '#88bbff', opacity: 1 },
+        { width: 0.8, blur: 0, color: 'rgba(240,245,255,0.9)',  shadow: '#ffffff', opacity: 1 }
+      ];
+
+      l2Ctx.save();
+      l2Ctx.globalCompositeOperation = 'screen';
+
       for (var i = 0; i < bolts.length; i++) {
         var b = bolts[i];
         var sx = b.x - scrollX;
         var sy = b.y;
-        if (b.segments.length < 2) continue;
 
-        // 3 passes: thick glow, medium, sharp core
-        var passes = [
-          { width: 6, blur: 14, color: 'rgba(100,180,255,0.15)' },
-          { width: 3, blur: 6,  color: 'rgba(150,210,255,0.5)' },
-          { width: 1.2, blur: 0, color: 'rgba(220,240,255,1)' }
-        ];
-        for (var p = 0; p < passes.length; p++) {
-          l2Ctx.beginPath();
-          l2Ctx.moveTo(sx + b.segments[0].x, sy + b.segments[0].y);
-          for (var k = 1; k < b.segments.length; k++) {
-            l2Ctx.lineTo(sx + b.segments[k].x, sy + b.segments[k].y);
+        // Flicker effect
+        var flicker = 0.7 + Math.random() * 0.3;
+
+        // Draw branches first (behind main bolt)
+        if (b.branches) {
+          for (var br = 0; br < b.branches.length; br++) {
+            drawBoltPath(b.branches[br], sx, sy, branchPasses, flicker * 0.7);
           }
-          l2Ctx.strokeStyle = passes[p].color;
-          l2Ctx.lineWidth = passes[p].width;
-          l2Ctx.shadowColor = '#88ccff';
-          l2Ctx.shadowBlur = passes[p].blur;
-          l2Ctx.stroke();
-          l2Ctx.shadowBlur = 0;
         }
+
+        // Draw main bolt
+        drawBoltPath(b.segments, sx, sy, passes, flicker);
       }
+
+      l2Ctx.restore();
     }
 
     // ── DOLL APPARITION ──────────────────────────────────────────
