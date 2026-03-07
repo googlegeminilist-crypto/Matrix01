@@ -3607,8 +3607,10 @@
 
     // ── DOLL APPARITION ──────────────────────────────────────────
 
-    var dollSound = new Audio('freesound_community-there_was_a_time-32907.mp3');
-    dollSound.volume = 0.7;
+    var dollSound1 = new Audio('freesound_community-there_was_a_time-32907.mp3');
+    dollSound1.volume = 0.7;
+    var dollSound2 = new Audio('freesound_community-horror-whisper-voice-angry-29738.mp3');
+    dollSound2.volume = 0.7;
 
     function updateDollApparitions() {
       dollSpawnTimer++;
@@ -3625,10 +3627,14 @@
           wobble: Math.random() * Math.PI * 2
         });
         dollSpawnTimer = 0;
-        // Sometimes play the doll sound
-        if (Math.random() < 0.5) {
-          dollSound.currentTime = 0;
-          dollSound.play().catch(function(){});
+        // Sometimes play a doll sound — pick one at random
+        var r = Math.random();
+        if (r < 0.35) {
+          dollSound1.currentTime = 0;
+          dollSound1.play().catch(function(){});
+        } else if (r < 0.7) {
+          dollSound2.currentTime = 0;
+          dollSound2.play().catch(function(){});
         }
       }
 
