@@ -3355,47 +3355,39 @@
     // ── ENEMIES ─────────────────────────────────────────────────
 
     function spawnEnemy() {
-      // Spawn on a book platform ahead of the player
-      var placed = false;
+      // Spawn 2 dolls on a book platform ahead of the player
       for (var i = 0; i < platforms.length; i++) {
         var p = platforms[i];
         if (p.type === 'book' && p.x > player.x + 300 && p.x < player.x + l2Canvas.width + 200) {
-          // Don't stack zombies on the same book
-          var taken = false;
+          // Count how many already on this book
+          var count = 0;
           for (var j = 0; j < enemies.length; j++) {
-            if (Math.abs(enemies[j].x - (p.x + p.w / 2)) < 40) { taken = true; break; }
+            if (Math.abs(enemies[j].x - (p.x + p.w / 2)) < p.w / 2) count++;
           }
-          if (!taken && Math.random() < 0.5) {
+          if (count >= 2) continue; // already full
+          if (Math.random() > 0.5) continue;
+
+          // Spawn up to 2
+          var toSpawn = 2 - count;
+          for (var s = 0; s < toSpawn; s++) {
+            var offsetX = (s === 0 ? -1 : 1) * (p.w * 0.2);
             enemies.push({
-              x: p.x + p.w / 2, y: p.y - 40,
-              w: 24, h: 40,
+              x: p.x + p.w / 2 + offsetX, y: p.y - 45,
+              w: 30, h: 50,
               hp: 1,
               shootTimer: 40 + Math.floor(Math.random() * 60),
               facing: Math.random() < 0.5 ? -1 : 1,
               armRaise: 0
             });
-            placed = true;
-            break;
           }
+          return;
         }
-      }
-      // Fallback: ground zombie
-      if (!placed) {
-        enemies.push({
-          x: player.x + l2Canvas.width * 0.7 + Math.random() * 200,
-          y: l2Canvas.height - 80,
-          w: 24, h: 40,
-          hp: 1,
-          shootTimer: 40 + Math.floor(Math.random() * 60),
-          facing: -1,
-          armRaise: 0
-        });
       }
     }
 
     function updateEnemies() {
       enemySpawnTimer++;
-      if (enemySpawnTimer > 100 && enemies.length < 8) {
+      if (enemySpawnTimer > 80 && enemies.length < 16) {
         spawnEnemy();
         enemySpawnTimer = 0;
       }
@@ -3506,8 +3498,8 @@
         var sy = e.y;
         if (sx < -60 || sx > l2Canvas.width + 60) continue;
 
-        var dw = 36;
-        var dh = 54; // doll aspect ratio
+        var dw = 50;
+        var dh = 75; // doll aspect ratio
         var f = e.facing;
 
         l2Ctx.save();
