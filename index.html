@@ -3041,6 +3041,81 @@
     var enemySpawnTimer = 0;
     var ENEMY_EMOJIS = ['😠','😡','😤','🤬','👿'];
 
+    // Ash particle system — dolls disintegrate into ash when electrocuted
+    var ashParticles = [];
+    function spawnAsh(cx, cy, count) {
+      for (var i = 0; i < count; i++) {
+        var angle = Math.random() * Math.PI * 2;
+        var speed = 1 + Math.random() * 3;
+        var size = 2 + Math.random() * 5;
+        ashParticles.push({
+          x: cx + (Math.random() - 0.5) * 20,
+          y: cy + (Math.random() - 0.5) * 30,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed - 1.5, // drift upward
+          size: size,
+          life: 0,
+          maxLife: 40 + Math.floor(Math.random() * 40),
+          rot: Math.random() * Math.PI * 2,
+          rotSpeed: (Math.random() - 0.5) * 0.2,
+          // Color variation: dark grey to orange ember
+          ember: Math.random() < 0.3
+        });
+      }
+    }
+    function updateAsh() {
+      for (var i = ashParticles.length - 1; i >= 0; i--) {
+        var a = ashParticles[i];
+        a.x += a.vx;
+        a.y += a.vy;
+        a.vy += 0.04; // slight gravity
+        a.vx *= 0.98; // drag
+        a.rot += a.rotSpeed;
+        a.life++;
+        if (a.life > a.maxLife) { ashParticles.splice(i, 1); }
+      }
+    }
+    function drawAsh() {
+      for (var i = 0; i < ashParticles.length; i++) {
+        var a = ashParticles[i];
+        var sx = a.x - scrollX;
+        var sy = a.y;
+        if (sx < -20 || sx > l2Canvas.width + 20) continue;
+        var fade = 1 - a.life / a.maxLife;
+
+        l2Ctx.save();
+        l2Ctx.translate(sx, sy);
+        l2Ctx.rotate(a.rot);
+
+        if (a.ember) {
+          // Glowing ember — DOF outer glow layer
+          var emberFade = fade * (0.5 + 0.5 * Math.sin(a.life * 0.3));
+          l2Ctx.globalAlpha = emberFade * 0.3;
+          l2Ctx.filter = 'blur(4px)';
+          l2Ctx.fillStyle = '#ff6600';
+          l2Ctx.fillRect(-a.size * 1.5, -a.size * 1.5, a.size * 3, a.size * 3);
+          // Sharp ember core
+          l2Ctx.filter = 'none';
+          l2Ctx.globalAlpha = emberFade * 0.9;
+          l2Ctx.fillStyle = '#ffaa33';
+          l2Ctx.fillRect(-a.size * 0.5, -a.size * 0.5, a.size, a.size);
+        } else {
+          // Ash flake — DOF blur layer
+          l2Ctx.globalAlpha = fade * 0.2;
+          l2Ctx.filter = 'blur(3px)';
+          l2Ctx.fillStyle = '#444';
+          l2Ctx.fillRect(-a.size * 1.2, -a.size * 1.2, a.size * 2.4, a.size * 2.4);
+          // Sharp ash
+          l2Ctx.filter = 'none';
+          l2Ctx.globalAlpha = fade * 0.8;
+          l2Ctx.fillStyle = '#222';
+          l2Ctx.fillRect(-a.size * 0.5, -a.size * 0.5, a.size, a.size);
+        }
+
+        l2Ctx.restore();
+      }
+    }
+
     // Doll apparition
     // Hallway background
     var hallwayImg = new Image();
@@ -3583,6 +3658,7 @@
           var dx = b.x - fd.x;
           var dy = b.y - fd.y;
           if (dx * dx + dy * dy < 45 * 45) {
+            spawnAsh(fd.x, fd.y, 35);
             flyingDolls.splice(j, 1);
             bolts.splice(i, 1);
             l2Score++;
@@ -3680,6 +3756,7 @@
           var dx = b.x - e.x;
           var dy = b.y - e.y;
           if (dx * dx + dy * dy < 40 * 40) {
+            spawnAsh(e.x, e.y, 35);
             enemies.splice(j, 1);
             bolts.splice(i, 1);
             l2Score++;
@@ -4059,6 +4136,7 @@
       updateBolts();
       updateDollApparitions();
       updateFlyingDolls();
+      updateAsh();
       updateCamera();
       drawPlatforms();
       drawDollApparitions();
@@ -4066,6 +4144,7 @@
       drawFlyingDolls();
       drawGasBalls();
       drawBolts();
+      drawAsh();
       drawPlayer();
       drawHUD();
 
@@ -4118,6 +4197,7 @@
       dollSpawnTimer = 0;
       flyingDolls = [];
       flyDollSpawnTimer = 0;
+      ashParticles = [];
 
       generatePlatforms();
 
