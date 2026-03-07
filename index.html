@@ -3017,6 +3017,8 @@
     var l2Music = new Audio('Untitled 7.mp3');
     l2Music.loop = true;
     l2Music.volume = 0.6;
+    var l2Thunder = new Audio('thunder.mp3');
+    l2Thunder.volume = 0.5;
 
     // Enemies, gas balls, lightning bolts
     var enemies = [];
@@ -3626,6 +3628,8 @@
     }
 
     function shootBolt() {
+      l2Thunder.currentTime = 0;
+      l2Thunder.play().catch(function(){});
       var dir = player.facing < 0 ? 1 : -1; // facing is flipped in draw
       var mainLen = 80 + Math.random() * 30;
       var mainSegs = generateBoltSegments(dir, mainLen);
