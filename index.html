@@ -3018,7 +3018,20 @@
     l2Music.loop = true;
     l2Music.volume = 0.6;
     var l2Thunder = new Audio('thunder.mp3');
-    l2Thunder.volume = 0.5;
+    l2Thunder.volume = 0.15;
+
+    // Electrocution sound — pool of clones so overlapping hits all play
+    var l2ZapSrc = 'freesound_community-electrocute-6247.mp3';
+    function playElectrocute() {
+      var zap = new Audio(l2ZapSrc);
+      zap.volume = 1.0;
+      zap.currentTime = 0;
+      zap.play().catch(function(){});
+      setTimeout(function() {
+        zap.pause();
+        zap.src = '';
+      }, 400);
+    }
 
     // Enemies, gas balls, lightning bolts
     var enemies = [];
@@ -3573,6 +3586,7 @@
             flyingDolls.splice(j, 1);
             bolts.splice(i, 1);
             l2Score++;
+            playElectrocute();
             break;
           }
         }
@@ -3669,6 +3683,7 @@
             enemies.splice(j, 1);
             bolts.splice(i, 1);
             l2Score++;
+            playElectrocute();
             break;
           }
         }
