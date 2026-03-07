@@ -3498,122 +3498,60 @@
     }
 
     function drawEnemies() {
+      if (!dollImg.complete || dollImg.naturalWidth === 0) return;
+
       for (var i = 0; i < enemies.length; i++) {
         var e = enemies[i];
         var sx = e.x - scrollX;
         var sy = e.y;
         if (sx < -60 || sx > l2Canvas.width + 60) continue;
 
+        var dw = 36;
+        var dh = 54; // doll aspect ratio
         var f = e.facing;
+
         l2Ctx.save();
 
-        // ── HEAD — rotting green ──
-        l2Ctx.fillStyle = '#2a4a1a';
-        l2Ctx.shadowColor = 'rgba(50,120,30,0.5)';
-        l2Ctx.shadowBlur = 6;
-        l2Ctx.beginPath();
-        l2Ctx.ellipse(sx, sy, 10, 12, 0, 0, Math.PI * 2);
-        l2Ctx.fill();
-        l2Ctx.shadowBlur = 0;
-
-        // Dark patches on face
-        l2Ctx.fillStyle = '#1a3010';
-        l2Ctx.beginPath();
-        l2Ctx.ellipse(sx - 3, sy - 2, 3, 2, 0.2, 0, Math.PI * 2);
-        l2Ctx.fill();
-
-        // Eyes — glowing red
-        l2Ctx.fillStyle = '#ff2200';
-        l2Ctx.shadowColor = '#ff0000';
-        l2Ctx.shadowBlur = 6;
-        l2Ctx.beginPath();
-        l2Ctx.arc(sx - 4 * f, sy - 3, 2, 0, Math.PI * 2);
-        l2Ctx.arc(sx + 2 * f, sy - 3, 2, 0, Math.PI * 2);
-        l2Ctx.fill();
-        l2Ctx.shadowBlur = 0;
-
-        // Mouth — jagged
-        l2Ctx.strokeStyle = '#0a0a00';
-        l2Ctx.lineWidth = 1.5;
-        l2Ctx.beginPath();
-        l2Ctx.moveTo(sx - 5, sy + 5);
-        l2Ctx.lineTo(sx - 2, sy + 3);
-        l2Ctx.lineTo(sx + 1, sy + 6);
-        l2Ctx.lineTo(sx + 4, sy + 3);
-        l2Ctx.lineTo(sx + 6, sy + 5);
-        l2Ctx.stroke();
-
-        // ── BODY — tattered ──
-        l2Ctx.fillStyle = '#3a2a1a';
-        l2Ctx.fillRect(sx - 7, sy + 11, 14, 18);
-        // Rips
-        l2Ctx.strokeStyle = '#1a1208';
-        l2Ctx.lineWidth = 1;
-        l2Ctx.beginPath();
-        l2Ctx.moveTo(sx - 3, sy + 14); l2Ctx.lineTo(sx - 1, sy + 22);
-        l2Ctx.moveTo(sx + 2, sy + 16); l2Ctx.lineTo(sx + 4, sy + 26);
-        l2Ctx.stroke();
-
-        // ── ARMS ──
-        var armAngle = e.armRaise * 1.2; // raise when attacking
-        l2Ctx.strokeStyle = '#2a4a1a';
-        l2Ctx.lineWidth = 3;
-        l2Ctx.lineCap = 'round';
-
-        // Front arm (facing player, raised)
-        var armStartX = sx + f * 7;
-        var armStartY = sy + 15;
-        var armEndX = armStartX + f * (12 + armAngle * 6);
-        var armEndY = armStartY - armAngle * 14;
-        l2Ctx.beginPath();
-        l2Ctx.moveTo(armStartX, armStartY);
-        l2Ctx.lineTo(armEndX, armEndY);
-        l2Ctx.stroke();
-        // Bony hand
-        l2Ctx.fillStyle = '#3a5a2a';
-        l2Ctx.beginPath();
-        l2Ctx.arc(armEndX, armEndY, 3, 0, Math.PI * 2);
-        l2Ctx.fill();
-        // Fingers
-        l2Ctx.strokeStyle = '#3a5a2a';
-        l2Ctx.lineWidth = 1;
-        for (var fi = -1; fi <= 1; fi++) {
-          l2Ctx.beginPath();
-          l2Ctx.moveTo(armEndX, armEndY);
-          l2Ctx.lineTo(armEndX + f * 4, armEndY + fi * 3 - 2);
-          l2Ctx.stroke();
+        // Flip doll to face player
+        if (f < 0) {
+          l2Ctx.translate(sx, sy);
+          l2Ctx.scale(-1, 1);
+          // DOF blur layer
+          l2Ctx.globalAlpha = 0.25;
+          l2Ctx.filter = 'blur(6px)';
+          l2Ctx.drawImage(dollImg, -dw * 0.6, -dh * 0.5, dw * 1.2, dh * 1.2);
+          // Sharp layer
+          l2Ctx.globalAlpha = 1;
+          l2Ctx.filter = 'none';
+          l2Ctx.drawImage(dollImg, -dw / 2, -dh / 2, dw, dh);
+        } else {
+          // DOF blur layer
+          l2Ctx.globalAlpha = 0.25;
+          l2Ctx.filter = 'blur(6px)';
+          l2Ctx.drawImage(dollImg, sx - dw * 0.6, sy - dh * 0.5, dw * 1.2, dh * 1.2);
+          // Sharp layer
+          l2Ctx.globalAlpha = 1;
+          l2Ctx.filter = 'none';
+          l2Ctx.drawImage(dollImg, sx - dw / 2, sy - dh / 2, dw, dh);
         }
 
-        // Back arm (hanging)
-        l2Ctx.strokeStyle = '#2a4a1a';
-        l2Ctx.lineWidth = 3;
-        l2Ctx.beginPath();
-        l2Ctx.moveTo(sx - f * 7, sy + 15);
-        l2Ctx.lineTo(sx - f * 14, sy + 28);
-        l2Ctx.stroke();
-        l2Ctx.fillStyle = '#3a5a2a';
-        l2Ctx.beginPath();
-        l2Ctx.arc(sx - f * 14, sy + 28, 2.5, 0, Math.PI * 2);
-        l2Ctx.fill();
+        l2Ctx.restore();
 
-        // ── LEGS ──
-        l2Ctx.strokeStyle = '#2a3a18';
-        l2Ctx.lineWidth = 3;
-        // Left leg
-        l2Ctx.beginPath();
-        l2Ctx.moveTo(sx - 4, sy + 29);
-        l2Ctx.lineTo(sx - 6, sy + 40);
-        l2Ctx.stroke();
-        // Right leg
-        l2Ctx.beginPath();
-        l2Ctx.moveTo(sx + 4, sy + 29);
-        l2Ctx.lineTo(sx + 6, sy + 40);
-        l2Ctx.stroke();
-        // Feet
-        l2Ctx.fillStyle = '#1a2a10';
-        l2Ctx.fillRect(sx - 9, sy + 38, 6, 3);
-        l2Ctx.fillRect(sx + 3, sy + 38, 6, 3);
-
+        // Red glowing eyes overlay
+        l2Ctx.save();
+        l2Ctx.globalAlpha = 0.6 + e.armRaise * 0.4;
+        var eyeY = sy - dh * 0.15;
+        var eyeSpacing = dw * 0.12;
+        for (var side = -1; side <= 1; side += 2) {
+          var eyeX = sx + side * eyeSpacing;
+          l2Ctx.beginPath();
+          l2Ctx.arc(eyeX, eyeY, 3, 0, Math.PI * 2);
+          l2Ctx.fillStyle = 'rgba(255,0,0,0.9)';
+          l2Ctx.shadowColor = '#ff0000';
+          l2Ctx.shadowBlur = 10;
+          l2Ctx.fill();
+        }
+        l2Ctx.shadowBlur = 0;
         l2Ctx.restore();
       }
     }
