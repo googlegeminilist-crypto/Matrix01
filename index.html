@@ -3627,14 +3627,16 @@
           wobble: Math.random() * Math.PI * 2
         });
         dollSpawnTimer = 0;
-        // Sometimes play a doll sound — pick one at random
-        var r = Math.random();
-        if (r < 0.35) {
-          dollSound1.currentTime = 0;
-          dollSound1.play().catch(function(){});
-        } else if (r < 0.7) {
-          dollSound2.currentTime = 0;
-          dollSound2.play().catch(function(){});
+        // Sometimes play a doll sound — only if neither is already playing
+        if (dollSound1.paused && dollSound2.paused) {
+          var r = Math.random();
+          if (r < 0.35) {
+            dollSound1.currentTime = 0;
+            dollSound1.play().catch(function(){});
+          } else if (r < 0.7) {
+            dollSound2.currentTime = 0;
+            dollSound2.play().catch(function(){});
+          }
         }
       }
 
