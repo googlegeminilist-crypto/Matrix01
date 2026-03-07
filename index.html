@@ -3607,6 +3607,9 @@
 
     // ── DOLL APPARITION ──────────────────────────────────────────
 
+    var dollSound = new Audio('freesound_community-there_was_a_time-32907.mp3');
+    dollSound.volume = 0.7;
+
     function updateDollApparitions() {
       dollSpawnTimer++;
       // Spawn every ~5-10 seconds
@@ -3618,10 +3621,15 @@
           x: dx, y: dy,
           w: baseSize, h: baseSize * 1.5,
           life: 0,
-          maxLife: 120 + Math.floor(Math.random() * 90), // 2-3.5 seconds
+          maxLife: 120 + Math.floor(Math.random() * 90),
           wobble: Math.random() * Math.PI * 2
         });
         dollSpawnTimer = 0;
+        // Sometimes play the doll sound
+        if (Math.random() < 0.5) {
+          dollSound.currentTime = 0;
+          dollSound.play().catch(function(){});
+        }
       }
 
       for (var i = dollApparitions.length - 1; i >= 0; i--) {
