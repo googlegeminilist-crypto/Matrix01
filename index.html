@@ -2996,6 +2996,15 @@
     // Keys
     var keys = {};
     var shootCooldown = 0;
+    var swordCooldown = 0;
+    var lastZTap = 0;
+    var Z_DOUBLE_TAP_MS = 300; // must double-tap within 300ms
+
+    // Sword image + projectiles
+    var swordImg = new Image();
+    swordImg.src = 'sword.png';
+    var swords = [];
+
     window.addEventListener('keydown', function(e) {
       keys[e.code] = true;
       if (l2Active && (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'ArrowDown')) {
@@ -3004,6 +3013,17 @@
       if (l2Active && e.code === 'KeyS' && shootCooldown <= 0) {
         shootBolt();
         shootCooldown = 12;
+      }
+      // Double-tap Z to throw sword
+      if (l2Active && e.code === 'KeyZ') {
+        var now = Date.now();
+        if (now - lastZTap < Z_DOUBLE_TAP_MS && swordCooldown <= 0) {
+          shootSword();
+          swordCooldown = 30;
+          lastZTap = 0; // reset so triple tap doesn't fire again
+        } else {
+          lastZTap = now;
+        }
       }
     });
     window.addEventListener('keyup', function(e) { keys[e.code] = false; });
@@ -3955,6 +3975,100 @@
       l2Ctx.restore();
     }
 
+    // ── SWORD PROJECTILE ─────────────────────────────────────────
+
+    function shootSword() {
+      var dir = player.facing < 0 ? 1 : -1;
+      swords.push({
+        x: player.x + player.w / 2 + dir * 20,
+        y: player.y + player.h / 2 - 10,
+        vx: dir * 16,
+        life: 0, maxLife: 60,
+        rot: dir > 0 ? -Math.PI / 4 : Math.PI + Math.PI / 4,
+        rotSpeed: dir * 0.15,
+        w: 50, h: 50
+      });
+    }
+
+    function updateSwords() {
+      if (swordCooldown > 0) swordCooldown--;
+      for (var i = swords.length - 1; i >= 0; i--) {
+        var sw = swords[i];
+        sw.x += sw.vx;
+        sw.rot += sw.rotSpeed;
+        sw.life++;
+        if (sw.life > sw.maxLife) { swords.splice(i, 1); continue; }
+
+        // Hit book enemies
+        for (var j = enemies.length - 1; j >= 0; j--) {
+          var e = enemies[j];
+          var dx = sw.x - e.x;
+          var dy = sw.y - e.y;
+          if (dx * dx + dy * dy < 50 * 50) {
+            spawnAsh(e.x, e.y, 35);
+            enemies.splice(j, 1);
+            l2Score += 2;
+            // Sword keeps going — doesn't get consumed
+          }
+        }
+
+        // Hit flying dolls
+        for (var j = flyingDolls.length - 1; j >= 0; j--) {
+          var fd = flyingDolls[j];
+          var dx = sw.x - fd.x;
+          var dy = sw.y - fd.y;
+          if (dx * dx + dy * dy < 50 * 50) {
+            spawnAsh(fd.x, fd.y, 35);
+            flyingDolls.splice(j, 1);
+            l2Score += 2;
+          }
+        }
+      }
+    }
+
+    function drawSwords() {
+      if (!swordImg.complete || swordImg.naturalWidth === 0) return;
+
+      for (var i = 0; i < swords.length; i++) {
+        var sw = swords[i];
+        var sx = sw.x - scrollX;
+        var sy = sw.y;
+        if (sx < -80 || sx > l2Canvas.width + 80) continue;
+
+        var fade = 1 - sw.life / sw.maxLife;
+        var drawW = sw.w;
+        var drawH = sw.h;
+
+        l2Ctx.save();
+        l2Ctx.translate(sx, sy);
+        l2Ctx.rotate(sw.rot);
+
+        // DOF layer 1 — deep blur glow
+        l2Ctx.globalAlpha = fade * 0.2;
+        l2Ctx.filter = 'blur(10px)';
+        l2Ctx.drawImage(swordImg, -drawW * 0.7, -drawH * 0.7, drawW * 1.4, drawH * 1.4);
+
+        // DOF layer 2 — medium blur
+        l2Ctx.globalAlpha = fade * 0.4;
+        l2Ctx.filter = 'blur(4px)';
+        l2Ctx.drawImage(swordImg, -drawW * 0.55, -drawH * 0.55, drawW * 1.1, drawH * 1.1);
+
+        // Sharp layer
+        l2Ctx.globalAlpha = fade;
+        l2Ctx.filter = 'none';
+        l2Ctx.drawImage(swordImg, -drawW / 2, -drawH / 2, drawW, drawH);
+
+        // Metallic glint
+        l2Ctx.globalAlpha = fade * 0.3 * (0.5 + 0.5 * Math.sin(sw.life * 0.5));
+        l2Ctx.shadowColor = '#aaccff';
+        l2Ctx.shadowBlur = 12;
+        l2Ctx.drawImage(swordImg, -drawW / 2, -drawH / 2, drawW, drawH);
+        l2Ctx.shadowBlur = 0;
+
+        l2Ctx.restore();
+      }
+    }
+
     // ── DOLL APPARITION ──────────────────────────────────────────
 
     var dollSound1 = new Audio('freesound_community-there_was_a_time-32907.mp3');
@@ -4174,6 +4288,7 @@
       updateDollApparitions();
       updateFlyingDolls();
       updateAsh();
+      updateSwords();
       updateCamera();
       drawPlatforms();
       drawDollApparitions();
@@ -4181,6 +4296,7 @@
       drawFlyingDolls();
       drawGasBalls();
       drawBolts();
+      drawSwords();
       drawAsh();
       drawPlayer();
       drawHUD();
@@ -4235,6 +4351,9 @@
       flyingDolls = [];
       flyDollSpawnTimer = 0;
       ashParticles = [];
+      swords = [];
+      swordCooldown = 0;
+      lastZTap = 0;
 
       generatePlatforms();
 
