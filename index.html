@@ -3014,16 +3014,10 @@
         shootBolt();
         shootCooldown = 12;
       }
-      // Double-tap Z to throw sword
-      if (l2Active && e.code === 'KeyZ') {
-        var now = Date.now();
-        if (now - lastZTap < Z_DOUBLE_TAP_MS && swordCooldown <= 0) {
-          shootSword();
-          swordCooldown = 30;
-          lastZTap = 0; // reset so triple tap doesn't fire again
-        } else {
-          lastZTap = now;
-        }
+      // Z to throw sword
+      if (l2Active && e.code === 'KeyZ' && swordCooldown <= 0) {
+        shootSword();
+        swordCooldown = 30;
       }
     });
     window.addEventListener('keyup', function(e) { keys[e.code] = false; });
@@ -3144,6 +3138,10 @@
       { scale: 1.08, blur: 8, opacity: 0.25 },
       { scale: 1.00, blur: 0, opacity: 0.70 }
     ];
+
+    // Demon face projectile image
+    var demonShotImg = new Image();
+    demonShotImg.src = 'demon-shot.png';
 
     // Book platform image
     var bookImg = new Image();
@@ -3704,10 +3702,11 @@
       }
     }
 
-    // Let lightning bolts kill flying dolls too
+    // Let lightning bolts kill flying dolls and demon shots too
     var _origUpdateBolts = updateBolts;
     updateBolts = function() {
       _origUpdateBolts();
+      // Bolts vs flying dolls
       for (var i = bolts.length - 1; i >= 0; i--) {
         var b = bolts[i];
         for (var j = flyingDolls.length - 1; j >= 0; j--) {
@@ -3720,6 +3719,22 @@
             bolts.splice(i, 1);
             l2Score++;
             playElectrocute();
+            break;
+          }
+        }
+      }
+      // Bolts vs demon shots (gasBalls)
+      for (var i = bolts.length - 1; i >= 0; i--) {
+        var b = bolts[i];
+        for (var j = gasBalls.length - 1; j >= 0; j--) {
+          var g = gasBalls[j];
+          var dx = b.x - g.x;
+          var dy = b.y - g.y;
+          if (dx * dx + dy * dy < 35 * 35) {
+            spawnAsh(g.x, g.y, 25);
+            gasBalls.splice(j, 1);
+            bolts.splice(i, 1);
+            l2Score++;
             break;
           }
         }
@@ -3884,30 +3899,63 @@
     }
 
     function drawGasBalls() {
+      var useDemon = demonShotImg.complete && demonShotImg.naturalWidth > 0;
+
       for (var i = 0; i < gasBalls.length; i++) {
         var g = gasBalls[i];
         var sx = g.x - scrollX;
         var sy = g.y;
-        if (sx < -20 || sx > l2Canvas.width + 20) continue;
+        if (sx < -60 || sx > l2Canvas.width + 60) continue;
         var fade = 1 - g.life / g.maxLife;
-        // Fireball outer glow
-        l2Ctx.beginPath();
-        l2Ctx.arc(sx, sy, g.r + 5, 0, Math.PI * 2);
-        l2Ctx.fillStyle = 'rgba(255,80,0,' + (fade * 0.15) + ')';
-        l2Ctx.fill();
-        // Fireball mid
-        l2Ctx.beginPath();
-        l2Ctx.arc(sx, sy, g.r + 2, 0, Math.PI * 2);
-        l2Ctx.fillStyle = 'rgba(255,120,0,' + (fade * 0.4) + ')';
-        l2Ctx.shadowColor = '#ff4400';
-        l2Ctx.shadowBlur = 10;
-        l2Ctx.fill();
-        // Fireball core
-        l2Ctx.beginPath();
-        l2Ctx.arc(sx, sy, g.r, 0, Math.PI * 2);
-        l2Ctx.fillStyle = 'rgba(255,220,50,' + (fade * 0.9) + ')';
-        l2Ctx.fill();
-        l2Ctx.shadowBlur = 0;
+        var dw = 40;
+        var baseH = 40 * (demonShotImg.naturalHeight / demonShotImg.naturalWidth || 1.5);
+
+        // Close mouth when near player — squish height
+        var pdx = (player.x + player.w / 2) - g.x;
+        var pdy = (player.y + player.h / 2) - g.y;
+        var pDist = Math.sqrt(pdx * pdx + pdy * pdy);
+        var mouthClose = Math.max(0, Math.min(1, 1 - pDist / 200)); // 0 far, 1 close
+        var dh = baseH * (1 - mouthClose * 0.4); // squish up to 40%
+
+        if (useDemon) {
+          l2Ctx.save();
+          l2Ctx.translate(sx, sy);
+
+          // DOF layer 1 — deep blur glow
+          l2Ctx.globalAlpha = fade * 0.2;
+          l2Ctx.filter = 'blur(8px)';
+          l2Ctx.drawImage(demonShotImg, -dw * 0.7, -dh * 0.7, dw * 1.4, dh * 1.4);
+
+          // DOF layer 2 — medium blur
+          l2Ctx.globalAlpha = fade * 0.4;
+          l2Ctx.filter = 'blur(3px)';
+          l2Ctx.drawImage(demonShotImg, -dw * 0.55, -dh * 0.55, dw * 1.1, dh * 1.1);
+
+          // Sharp layer
+          l2Ctx.globalAlpha = fade;
+          l2Ctx.filter = 'none';
+          l2Ctx.drawImage(demonShotImg, -dw / 2, -dh / 2, dw, dh);
+
+          // Red eye glow — brighter when mouth closed (angry)
+          var eyeIntensity = 0.4 + mouthClose * 0.4;
+          l2Ctx.globalAlpha = fade * eyeIntensity * (0.5 + 0.5 * Math.sin(g.life * 0.3));
+          l2Ctx.shadowColor = '#ff2200';
+          l2Ctx.shadowBlur = 15 + mouthClose * 10;
+          l2Ctx.drawImage(demonShotImg, -dw / 2, -dh / 2, dw, dh);
+          l2Ctx.shadowBlur = 0;
+
+          l2Ctx.restore();
+        } else {
+          // Fallback circles
+          l2Ctx.beginPath();
+          l2Ctx.arc(sx, sy, g.r + 5, 0, Math.PI * 2);
+          l2Ctx.fillStyle = 'rgba(255,80,0,' + (fade * 0.15) + ')';
+          l2Ctx.fill();
+          l2Ctx.beginPath();
+          l2Ctx.arc(sx, sy, g.r, 0, Math.PI * 2);
+          l2Ctx.fillStyle = 'rgba(255,220,50,' + (fade * 0.9) + ')';
+          l2Ctx.fill();
+        }
       }
     }
 
@@ -4021,6 +4069,18 @@
             spawnAsh(fd.x, fd.y, 35);
             flyingDolls.splice(j, 1);
             l2Score += 2;
+          }
+        }
+
+        // Hit demon shots (gasBalls) — sword destroys them
+        for (var j = gasBalls.length - 1; j >= 0; j--) {
+          var g = gasBalls[j];
+          var dx = sw.x - g.x;
+          var dy = sw.y - g.y;
+          if (dx * dx + dy * dy < 40 * 40) {
+            spawnAsh(g.x, g.y, 25);
+            gasBalls.splice(j, 1);
+            l2Score++;
           }
         }
       }
