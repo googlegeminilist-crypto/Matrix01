@@ -3556,32 +3556,64 @@
         w: 35, h: 52,
         vx: 0, vy: -3, // lift off upward first
         wobble: Math.random() * Math.PI * 2,
-        alive: true
+        alive: true,
+        airTime: 0,
+        multiplied: false
       });
     }
 
     function updateFlyingDolls() {
       flyDollSpawnTimer++;
-      if (flyDollSpawnTimer > 250 + Math.random() * 200 && flyingDolls.length < 3) {
+      if (flyDollSpawnTimer > 150 + Math.random() * 100 && flyingDolls.length < 10) {
         spawnFlyingDoll();
         flyDollSpawnTimer = 0;
       }
+
+      // Collect new clones to add after loop
+      var newClones = [];
 
       for (var i = flyingDolls.length - 1; i >= 0; i--) {
         var fd = flyingDolls[i];
         if (!fd.alive) { flyingDolls.splice(i, 1); continue; }
 
-        // Chase the pumpkin
+        fd.airTime++;
+
+        // Multiply after ~1 second airborne — split into 2-3 fast clones
+        if (!fd.multiplied && fd.airTime > 60) {
+          fd.multiplied = true;
+          var cloneCount = 2 + Math.floor(Math.random() * 2); // 2-3 clones
+          for (var c = 0; c < cloneCount; c++) {
+            var spreadAngle = (Math.random() - 0.5) * 2.5;
+            newClones.push({
+              x: fd.x + (Math.random() - 0.5) * 40,
+              y: fd.y + (Math.random() - 0.5) * 40,
+              w: 35, h: 52,
+              vx: Math.cos(spreadAngle) * 5,
+              vy: Math.sin(spreadAngle) * 5,
+              wobble: Math.random() * Math.PI * 2,
+              alive: true,
+              airTime: 999,
+              multiplied: true
+            });
+          }
+          // Original doll also speeds up
+          fd.vx *= 1.5;
+          fd.vy *= 1.5;
+        }
+
+        // Chase the pumpkin — clones are much faster
+        var chaseAccel = fd.multiplied ? 0.4 : 0.15;
+        var maxSpd = fd.multiplied ? 9 : 4;
         var dx = (player.x + player.w / 2) - fd.x;
         var dy = (player.y + player.h / 2) - fd.y;
         var dist = Math.sqrt(dx * dx + dy * dy);
         if (dist > 0) {
-          fd.vx += (dx / dist) * 0.15;
-          fd.vy += (dy / dist) * 0.15;
+          fd.vx += (dx / dist) * chaseAccel;
+          fd.vy += (dy / dist) * chaseAccel;
         }
         // Clamp speed
         var spd = Math.sqrt(fd.vx * fd.vx + fd.vy * fd.vy);
-        if (spd > 4) { fd.vx = (fd.vx / spd) * 4; fd.vy = (fd.vy / spd) * 4; }
+        if (spd > maxSpd) { fd.vx = (fd.vx / spd) * maxSpd; fd.vy = (fd.vy / spd) * maxSpd; }
 
         // Wobble
         fd.wobble += 0.08;
@@ -3599,6 +3631,11 @@
 
         // Remove if way off screen behind player
         if (fd.x < scrollX - 400) { flyingDolls.splice(i, 1); }
+      }
+
+      // Add clones after loop to avoid modifying array during iteration
+      for (var c = 0; c < newClones.length; c++) {
+        flyingDolls.push(newClones[c]);
       }
     }
 
